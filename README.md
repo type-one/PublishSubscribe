@@ -10,6 +10,7 @@ Goodies:
 - simple thread-safe queue on top of std::queue
 - simple waitable object on top of std::mutex and std::condition_variable
 - simple non_copyable abstract class
+- simple periodic task helper
 
 https://github.com/type-one/PublishSubscribe
 

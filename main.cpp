@@ -32,9 +32,36 @@
 #include <type_traits>
 
 #include "tools/async_observer.hpp"
+#include "tools/periodic_task.hpp"
 #include "tools/sync_dictionary.hpp"
 #include "tools/sync_observer.hpp"
 #include "tools/sync_queue.hpp"
+
+void test_sync_queue()
+{
+    tools::sync_queue<std::string> str_queue;
+
+    str_queue.push("toto");
+
+    auto item = str_queue.front();
+
+    str_queue.pop();
+}
+
+void test_sync_dictionary()
+{
+    tools::sync_dictionary<std::string, std::string> str_dict;
+
+    str_dict.add("toto", "blob");
+
+    auto result = str_dict.find("toto");
+
+    if (result.has_value())
+    {
+        str_dict.remove("toto");
+    }
+}
+
 
 enum class my_topic
 {
@@ -130,32 +157,6 @@ public:
 private:
 };
 
-
-void test_sync_queue()
-{
-    tools::sync_queue<std::string> str_queue;
-
-    str_queue.push("toto");
-
-    auto item = str_queue.front();
-
-    str_queue.pop();
-}
-
-void test_sync_dictionary()
-{
-    tools::sync_dictionary<std::string, std::string> str_dict;
-
-    str_dict.add("toto", "blob");
-
-    auto result = str_dict.find("toto");
-
-    if (result.has_value())
-    {
-        str_dict.remove("toto");
-    }
-}
-
 void test_publish_subscribe()
 {
     auto observer1 = std::make_shared<my_observer>();
@@ -190,6 +191,44 @@ void test_publish_subscribe()
     subject2->publish(my_topic::system, "tantine");
 }
 
+struct my_periodic_task_context
+{
+    std::atomic<int> loop_counter = 0;
+    tools::sync_queue<std::chrono::high_resolution_clock::time_point> time_points;
+};
+
+using my_periodic_task = tools::periodic_task<my_periodic_task_context>;
+
+void test_periodic_task()
+{
+    auto lambda = [](std::shared_ptr<my_periodic_task_context> context) -> void
+    {
+        context->loop_counter += 1;
+        context->time_points.emplace(std::chrono::high_resolution_clock::now());
+    };
+
+    auto context = std::make_shared<my_periodic_task_context>();
+    // 10 ms period
+    const auto period = std::chrono::duration<int, std::micro>(10000);
+    const auto start_timepoint = std::chrono::high_resolution_clock::now();
+    my_periodic_task task1(lambda, context, period);
+
+    // sleep 2 sec
+    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
+
+    std::cout << "nb of periodic loops = " << context->loop_counter << std::endl;
+
+    auto previous_timepoint = start_timepoint;
+    while (!context->time_points.empty())
+    {
+        const auto measured_timepoint = context->time_points.front();
+        context->time_points.pop();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(measured_timepoint - previous_timepoint);
+        std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
+        previous_timepoint = measured_timepoint;
+    }
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -198,6 +237,7 @@ int main(int argc, char* argv[])
     test_sync_queue();
     test_sync_dictionary();
     test_publish_subscribe();
+    test_periodic_task();
 
     return 0;
 }
