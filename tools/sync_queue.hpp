@@ -35,8 +35,8 @@
 
 namespace tools
 {
-    template<typename T>
-    class sync_queue: public non_copyable
+    template <typename T>
+    class sync_queue : public non_copyable
     {
     public:
         sync_queue() = default;

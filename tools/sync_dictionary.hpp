@@ -38,8 +38,8 @@
 
 namespace tools
 {
-    template<typename K, typename T>
-    class sync_dictionary: public non_copyable
+    template <typename K, typename T>
+    class sync_dictionary : public non_copyable
     {
     public:
         sync_dictionary() = default;
@@ -75,7 +75,7 @@ namespace tools
             }
         }
 
-        std::map<K, T> get_collection() 
+        std::map<K, T> get_collection()
         {
             std::lock_guard guard(m_mutex);
             auto snapshot = m_dictionary;

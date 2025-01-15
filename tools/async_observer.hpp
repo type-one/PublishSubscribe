@@ -33,23 +33,23 @@
 #include <tuple>
 #include <vector>
 
-#include "sync_observer.hpp"
 #include "sync_object.hpp"
+#include "sync_observer.hpp"
 #include "sync_queue.hpp"
 
 namespace tools
 {
-  
-    template<typename Topic, typename Evt>
-    class async_observer: public sync_observer<Topic, Evt>
+
+    template <typename Topic, typename Evt>
+    class async_observer : public sync_observer<Topic, Evt>
     {
     public:
         async_observer() = default;
-        virtual ~async_observer() {}
+        virtual ~async_observer() { }
 
         virtual void inform(const Topic& topic, const Evt& event, const std::string& origin) override
         {
-            m_evt_queue.push({topic, event, origin});
+            m_evt_queue.push({ topic, event, origin });
             m_wakeable.signal();
         }
 
@@ -59,7 +59,7 @@ namespace tools
         {
             std::vector<event_entry> events;
 
-            while(!m_evt_queue.empty())
+            while (!m_evt_queue.empty())
             {
                 events.emplace_back(m_evt_queue.front());
                 m_evt_queue.pop();
@@ -71,7 +71,7 @@ namespace tools
         std::optional<event_entry> pop_first_event()
         {
             std::optional<event_entry> entry;
-            
+
             if (!m_evt_queue.empty())
             {
                 entry = m_evt_queue.front();
@@ -84,12 +84,12 @@ namespace tools
         std::optional<event_entry> pop_last_event()
         {
             std::optional<event_entry> entry;
-            
+
             if (!m_evt_queue.empty())
             {
                 entry = m_evt_queue.back();
 
-                while(!m_evt_queue.empty())
+                while (!m_evt_queue.empty())
                 {
                     m_evt_queue.pop();
                 }
@@ -98,25 +98,13 @@ namespace tools
             return entry;
         }
 
-        bool has_events()
-        {
-            return !m_evt_queue.empty();
-        }
+        bool has_events() { return !m_evt_queue.empty(); }
 
-        std::size_t number_of_events()
-        {
-            return m_evt_queue.size();
-        }
+        std::size_t number_of_events() { return m_evt_queue.size(); }
 
-        void wait_for_events()
-        {
-            m_wakeable.wait_for_signal();
-        }
+        void wait_for_events() { m_wakeable.wait_for_signal(); }
 
-        void wait_for_events(const std::chrono::duration<int, std::micro>& timeout)
-        {
-            m_wakeable.wait_for_signal(timeout);
-        }
+        void wait_for_events(const std::chrono::duration<int, std::micro>& timeout) { m_wakeable.wait_for_signal(timeout); }
 
     private:
         sync_object m_wakeable;

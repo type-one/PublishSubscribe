@@ -29,9 +29,9 @@
 #define __SYNC_OBSERVER_HPP__
 
 #include <cstddef>
-#include <mutex>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <utility>
 
@@ -42,57 +42,53 @@ namespace tools
     // https://juanchopanzacpp.wordpress.com/2013/02/24/simple-observer-pattern-implementation-c11/
     // http://www.codeproject.com/Articles/328365/Understanding-and-Implementing-Observer-Pattern
 
-    template<typename Topic, typename Evt>
-    class sync_observer: public non_copyable
+    template <typename Topic, typename Evt>
+    class sync_observer : public non_copyable
     {
     public:
         sync_observer() = default;
-        virtual ~sync_observer() {}
+        virtual ~sync_observer() { }
 
         virtual void inform(const Topic& topic, const Evt& event, const std::string& origin) = 0;
     };
 
-    template<typename Topic, typename Evt> 
+    template <typename Topic, typename Evt>
     using sync_subscription = std::pair<Topic, std::shared_ptr<sync_observer<Topic, Evt>>>;
 
-    template<typename Topic, typename Evt>
+    template <typename Topic, typename Evt>
     class sync_subject
     {
     public:
-
         using sync_observer_shared_ptr = std::shared_ptr<sync_observer<Topic, Evt>>;
 
         sync_subject() = delete;
-        sync_subject(const std::string& name) : m_name{name}
+        sync_subject(const std::string& name)
+            : m_name { name }
         {
         }
 
-        virtual ~sync_subject() {}
+        virtual ~sync_subject() { }
 
-        std::string name() const
-        {
-            return m_name;
-        }
+        std::string name() const { return m_name; }
 
         void subscribe(const Topic& topic, sync_observer_shared_ptr observer)
         {
             std::lock_guard guard(m_mutex);
-            m_subscribers.insert({topic, observer});
-        }  
-            
+            m_subscribers.insert({ topic, observer });
+        }
+
         void unsubscribe(const Topic& topic, sync_observer_shared_ptr observer)
         {
             std::lock_guard guard(m_mutex);
 
-            for (auto&[it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
+            for (auto& [it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
             {
                 if (it->second == observer)
                 {
                     m_subscribers.erase(it);
                     break;
-                }                
+                }
             }
-            
         }
 
         virtual void publish(const Topic& topic, const Evt& event)
@@ -102,13 +98,13 @@ namespace tools
             {
                 std::lock_guard guard(m_mutex);
 
-                for (auto&[it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
+                for (auto& [it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
                 {
                     to_inform.push_back(it->second);
                 }
             }
 
-            for(auto& observer: to_inform)
+            for (auto& observer : to_inform)
             {
                 observer->inform(topic, event, m_name);
             }

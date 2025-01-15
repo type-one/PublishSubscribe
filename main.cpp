@@ -48,12 +48,12 @@ class my_observer : public base_observer
 {
 public:
     my_observer() = default;
-    virtual ~my_observer() {}
+    virtual ~my_observer() { }
 
     virtual void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
-        std::cout << "sync [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event (" 
-                  << event << ") from " << origin << std::endl;
+        std::cout << "sync [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event (" << event
+                  << ") from " << origin << std::endl;
     }
 
 private:
@@ -63,7 +63,8 @@ using base_async_observer = tools::async_observer<my_topic, std::string>;
 class my_async_observer : public base_async_observer
 {
 public:
-    my_async_observer() : m_task_loop([this]() { handle_events(); })
+    my_async_observer()
+        : m_task_loop([this]() { handle_events(); })
     {
     }
 
@@ -75,31 +76,30 @@ public:
 
     virtual void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
-        std::cout << "async/push [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << 
-                     "] received: event (" << event << ") from " << origin << std::endl;
+        std::cout << "async/push [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event (" << event
+                  << ") from " << origin << std::endl;
 
         base_async_observer::inform(topic, event, origin);
     }
 
 private:
-
     void handle_events()
     {
         const auto timeout = std::chrono::duration<int, std::micro>(1000);
 
-        while(!m_stop_task.load())
+        while (!m_stop_task.load())
         {
             wait_for_events(timeout);
 
-            while(number_of_events() > 0)
+            while (number_of_events() > 0)
             {
                 auto& entry = pop_first_event();
                 if (entry.has_value())
                 {
                     auto& [topic, event, origin] = *entry;
 
-                    std::cout << "async/pop [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << 
-                                 "] received: event (" << event << ") from " << origin << std::endl;
+                    std::cout << "async/pop [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event ("
+                              << event << ") from " << origin << std::endl;
                 }
             }
         }
@@ -114,9 +114,12 @@ class my_subject : public base_subject
 {
 public:
     my_subject() = delete;
-    my_subject(const std::string name) : base_subject(name) {}
+    my_subject(const std::string name)
+        : base_subject(name)
+    {
+    }
 
-    virtual ~my_subject() {}
+    virtual ~my_subject() { }
 
     virtual void publish(const my_topic& topic, const std::string& event) override
     {
@@ -128,7 +131,7 @@ private:
 };
 
 
-void test_sync_queue() 
+void test_sync_queue()
 {
     tools::sync_queue<std::string> str_queue;
 
@@ -154,7 +157,7 @@ void test_sync_dictionary()
 }
 
 void test_publish_subscribe()
-{    
+{
     auto observer1 = std::make_shared<my_observer>();
     auto observer2 = std::make_shared<my_observer>();
     auto async_observer = std::make_shared<my_async_observer>();
@@ -185,7 +188,6 @@ void test_publish_subscribe()
 
     subject2->publish(my_topic::generic, "tonton");
     subject2->publish(my_topic::system, "tantine");
-
 }
 
 int main(int argc, char* argv[])
