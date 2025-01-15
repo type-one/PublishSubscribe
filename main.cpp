@@ -93,7 +93,7 @@ private:
 
             while (number_of_events() > 0)
             {
-                auto& entry = pop_first_event();
+                auto entry = pop_first_event();
                 if (entry.has_value())
                 {
                     auto& [topic, event, origin] = *entry;

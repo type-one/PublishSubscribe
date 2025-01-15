@@ -81,7 +81,7 @@ namespace tools
         {
             std::lock_guard guard(m_mutex);
 
-            for (auto& [it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
+            for (auto [it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
             {
                 if (it->second == observer)
                 {
@@ -98,7 +98,7 @@ namespace tools
             {
                 std::lock_guard guard(m_mutex);
 
-                for (auto& [it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
+                for (auto [it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
                 {
                     to_inform.push_back(it->second);
                 }
