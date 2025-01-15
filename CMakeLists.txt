@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 # cmake -DCMAKE_BUILD_TYPE=Debug -G Ninja .
 
 # set the project name and version
-project(PubSub VERSION 1.0)
+project(PublishSubscribe VERSION 1.0)
 
 # https://stackoverflow.com/questions/11944060/how-to-detect-target-architecture-using-cmake
 
@@ -116,15 +116,15 @@ set(TARGET_SRC
 
 include_directories("${PROJECT_SOURCE_DIR}")
 
-add_executable(pubsub 
+add_executable(publish_subscribe 
         "${TARGET_SRC}"
         "${TARGET_H}"
    )
 
 if(LINUX) 
-    target_link_libraries(pubsub -lm -lpthread)
+    target_link_libraries(publish_subscribe -lm -lpthread)
 elseif(WIN32)
-    target_link_libraries(pubsub)
+    target_link_libraries(publish_subscribe)
 endif()
 
 
