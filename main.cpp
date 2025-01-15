@@ -33,6 +33,7 @@
 #include <type_traits>
 
 #include "tools/async_observer.hpp"
+#include "tools/histogram.hpp"
 #include "tools/periodic_task.hpp"
 #include "tools/sync_dictionary.hpp"
 #include "tools/sync_observer.hpp"
@@ -230,31 +231,68 @@ void test_periodic_task()
     }
 }
 
+class my_collector : public base_observer
+{
+public:
+    my_collector() = default;
+    virtual ~my_collector() { }
+
+    virtual void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
+    {
+        (void)topic;
+        (void)origin;
+
+        m_histogram.add(static_cast<double>(std::strtod(event.c_str(), nullptr)));
+    }
+
+    void display_stats()
+    {
+        auto top = m_histogram.top();
+        std::cout << std::endl << "value " << top << " appears " << m_histogram.top_occurence() << " times" << std::endl;
+        auto avg = m_histogram.average();
+        std::cout << "average value is " << avg << std::endl;
+        std::cout << "median value is " << m_histogram.median() << std::endl;
+        auto variance = m_histogram.variance(avg);
+        std::cout << "variance is " << variance << std::endl;
+        std::cout << "gaussian probability of " << top << " occuring is " << m_histogram.gaussian_probability(top, avg, variance) << std::endl;
+    }
+
+private:
+    tools::histogram<double> m_histogram;
+};
+
 void test_periodic_publish_subscribe()
 {
-    auto monitoring = std::make_shared<my_async_observer>();;
-    auto data_source = std::make_shared<my_subject>("data_source");    
+    auto monitoring = std::make_shared<my_async_observer>();
+    auto data_source = std::make_shared<my_subject>("data_source");
+    auto histogram_feeder = std::make_shared<my_collector>();
 
     auto sampler = [&data_source](std::shared_ptr<my_periodic_task_context> context) -> void
     {
         context->loop_counter += 1;
-        
+
         // mocked signal
         double signal = std::sin(context->loop_counter.load());
 
         // emit "signal" as a 'string' event
-        data_source->publish(my_topic::external, std::to_string(signal)); 
+        data_source->publish(my_topic::external, std::to_string(signal));
     };
 
     data_source->subscribe(my_topic::external, monitoring);
-    
+    data_source->subscribe(my_topic::external, histogram_feeder);
+
     // "sample" with a 100 ms period
     auto context = std::make_shared<my_periodic_task_context>();
     const auto period = std::chrono::duration<int, std::milli>(100);
-    my_periodic_task periodic_task(sampler, context, period);   
+    {
+        my_periodic_task periodic_task(sampler, context, period);
 
-    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
+        std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
+    }
+
+    histogram_feeder->display_stats();
 }
+
 
 int main(int argc, char* argv[])
 {
