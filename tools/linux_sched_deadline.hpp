@@ -48,7 +48,7 @@ namespace tools
     // https://docs.kernel.org/scheduler/sched-deadline.html
     // https://www.kernel.org/doc/Documentation/scheduler/sched-deadline.txt
     // https://github.com/jlelli/sched-deadline-tests
-	// http://retis.sssup.it/luca/TuToR/sched_dl-presentation.pdf
+    // http://retis.sssup.it/luca/TuToR/sched_dl-presentation.pdf
     // https://stackoverflow.com/questions/73431869/best-practice-for-realtime-periodic-task-1ms-with-linux-and-multi-core-syste
     // https://man7.org/linux/man-pages/man3/pthread_setschedparam.3.html
     // https://man.cx/pthread_make_periodic_np(3)
@@ -118,8 +118,8 @@ namespace tools
         }
     }
 
-    static bool set_earliest_deadline_scheduling(std::chrono::high_resolution_clock::time_point start_time, 
-                                                 const std::chrono::duration<int, std::micro>& period)
+    static bool set_earliest_deadline_scheduling(
+        std::chrono::high_resolution_clock::time_point start_time, const std::chrono::duration<int, std::micro>& period)
     {
         // Earliest Deadline scheduling if can run as root
 
@@ -137,7 +137,7 @@ namespace tools
             attr.sched_policy = SCHED_DEADLINE;
 
             const auto deadline = start_time + period;
-            const auto current_time = std::chrono::high_resolution_clock::now(); 
+            const auto current_time = std::chrono::high_resolution_clock::now();
             const auto remaining_time = std::chrono::duration_cast<std::chrono::microseconds>(deadline - current_time);
 
             // the kernel requires that sched_runtime <= sched_deadline <= sched_period
@@ -167,8 +167,8 @@ namespace tools
 
 #else // end if #defined __linux__
 
-static bool set_earliest_deadline_scheduling(std::chrono::high_resolution_clock::time_point start_time, 
-                                             const std::chrono::duration<int, std::micro>& period)
+static bool set_earliest_deadline_scheduling(
+    std::chrono::high_resolution_clock::time_point start_time, const std::chrono::duration<int, std::micro>& period)
 {
     // not implemented
     return false;
