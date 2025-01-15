@@ -254,7 +254,8 @@ public:
         std::cout << "median value is " << m_histogram.median() << std::endl;
         auto variance = m_histogram.variance(avg);
         std::cout << "variance is " << variance << std::endl;
-        std::cout << "gaussian probability of " << top << " occuring is " << m_histogram.gaussian_probability(top, avg, variance) << std::endl;
+        std::cout << "gaussian probability of " << top << " occuring is " << m_histogram.gaussian_probability(top, avg, variance)
+                  << std::endl;
     }
 
 private:
@@ -294,6 +295,22 @@ void test_periodic_publish_subscribe()
 }
 
 
+void test_queued_commands()
+{
+    tools::sync_queue<std::function<void()>> commands_queue;
+
+    commands_queue.emplace([]() { std::cout << "hello" << std::endl; });
+
+    commands_queue.emplace([]() { std::cout << "world" << std::endl; });
+
+    while (!commands_queue.empty())
+    {
+        auto call = commands_queue.front();
+        call();
+        commands_queue.pop();
+    }
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -304,6 +321,7 @@ int main(int argc, char* argv[])
     test_publish_subscribe();
     test_periodic_task();
     test_periodic_publish_subscribe();
+    test_queued_commands();
 
     return 0;
 }

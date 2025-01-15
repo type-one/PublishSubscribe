@@ -41,8 +41,8 @@
 
 namespace tools
 {
-    template<typename T>
-    class histogram: public non_copyable
+    template <typename T>
+    class histogram : public non_copyable
     {
     public:
         histogram() = default;
@@ -78,27 +78,18 @@ namespace tools
             ++m_total_count;
         }
 
-        constexpr T top() const
-        {
-            return m_top_value;
-        }
+        constexpr T top() const { return m_top_value; }
 
-        constexpr int total_count() const
-        {
-            return m_total_count;
-        }
+        constexpr int total_count() const { return m_total_count; }
 
-        constexpr int top_occurence() const
-        {
-            return m_top_occurence;
-        }
+        constexpr int top_occurence() const { return m_top_occurence; }
 
         T average() const
         {
             double avg = 0.0;
             double total = 0.0;
 
-            for(auto it = m_occurences.cbegin(); it != m_occurences.cend(); ++it)
+            for (auto it = m_occurences.cbegin(); it != m_occurences.cend(); ++it)
             {
                 if (it->second > 0) // occurence
                 {
@@ -107,30 +98,30 @@ namespace tools
                 }
             }
 
-		    return (total > 0.0) ? static_cast<T>((avg / total) + 0.5) : static_cast<T>(0);
+            return (total > 0.0) ? static_cast<T>((avg / total) + 0.5) : static_cast<T>(0);
         }
 
-		T variance(const T& average) const
+        T variance(const T& average) const
         {
             double vari = 0.0;
-		    double total = 0.0;
+            double total = 0.0;
 
-		    for (auto it = m_occurences.cbegin(); it != m_occurences.cend(); ++it)
-		    {
-			    if (it->second > 0) // occurence
-			    {
-				    const double v = static_cast<double>(it->first);
-				    vari += it->second * v*v;
-				    total += static_cast<double>(it->second);
-			    }			
-		    }
+            for (auto it = m_occurences.cbegin(); it != m_occurences.cend(); ++it)
+            {
+                if (it->second > 0) // occurence
+                {
+                    const double v = static_cast<double>(it->first);
+                    vari += it->second * v * v;
+                    total += static_cast<double>(it->second);
+                }
+            }
 
-		    return (total > 0.0) ? static_cast<T>((vari / total) - static_cast<double>(average*average) + 0.5) : static_cast<T>(0);
+            return (total > 0.0) ? static_cast<T>((vari / total) - static_cast<double>(average * average) + 0.5) : static_cast<T>(0);
         }
 
-		T median() const
+        T median() const
         {
-		    std::vector<T> to_sort;
+            std::vector<T> to_sort;
 
             for (auto it = m_occurences.cbegin(); it != m_occurences.cend(); ++it)
             {
@@ -147,12 +138,12 @@ namespace tools
 
             std::sort(to_sort.begin(), to_sort.end());
 
-		    return to_sort[to_sort.size() >> 1];
+            return to_sort[to_sort.size() >> 1];
         }
 
         double gaussian_probability(const T& value, const T& average, const T& variance) const
         {
-		    // https://fr.wikipedia.org/wiki/Loi_normale
+            // https://fr.wikipedia.org/wiki/Loi_normale
             if (variance > static_cast<T>(0))
             {
                 const double sigma = std::sqrt(static_cast<double>(variance));

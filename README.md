@@ -11,6 +11,7 @@ Goodies:
 - simple waitable object on top of std::mutex and std::condition_variable
 - simple non_copyable abstract class
 - simple periodic task helper
+- queuable commands
 
 https://github.com/type-one/PublishSubscribe
 
