@@ -25,6 +25,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -229,6 +230,32 @@ void test_periodic_task()
     }
 }
 
+void test_periodic_publish_subscribe()
+{
+    auto monitoring = std::make_shared<my_async_observer>();;
+    auto data_source = std::make_shared<my_subject>("data_source");    
+
+    auto sampler = [&data_source](std::shared_ptr<my_periodic_task_context> context) -> void
+    {
+        context->loop_counter += 1;
+        
+        // mocked signal
+        double signal = std::sin(context->loop_counter.load());
+
+        // emit "signal" as a 'string' event
+        data_source->publish(my_topic::external, std::to_string(signal)); 
+    };
+
+    data_source->subscribe(my_topic::external, monitoring);
+    
+    // "sample" with a 100 ms period
+    auto context = std::make_shared<my_periodic_task_context>();
+    const auto period = std::chrono::duration<int, std::milli>(100);
+    my_periodic_task periodic_task(sampler, context, period);   
+
+    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
+}
+
 int main(int argc, char* argv[])
 {
     (void)argc;
@@ -238,6 +265,7 @@ int main(int argc, char* argv[])
     test_sync_dictionary();
     test_publish_subscribe();
     test_periodic_task();
+    test_periodic_publish_subscribe();
 
     return 0;
 }
