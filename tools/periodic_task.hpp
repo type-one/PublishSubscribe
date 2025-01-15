@@ -34,6 +34,7 @@
 #include <memory>
 #include <thread>
 
+#include "linux_sched_deadline.hpp"
 #include "non_copyable.hpp"
 
 namespace tools
@@ -71,31 +72,39 @@ namespace tools
             auto start_time = std::chrono::high_resolution_clock::now();
             auto deadline = start_time + m_period;
 
+            bool earliest_deadline_enabled = set_earliest_deadline_scheduling(start_time, m_period); 
+
             while(!m_stop_task.load())
-            {   
-                m_routine(m_context);                
+            { 
+                // active wait loop
+                std::chrono::high_resolution_clock::time_point current_time;
+                do
+                {
+                    current_time = std::chrono::high_resolution_clock::now();                    
+                }                
+                while (deadline > current_time);
+  
+                // execute given periodic function
+                m_routine(m_context); 
 
-                auto current_time = std::chrono::high_resolution_clock::now();
+                // compute next deadline
+                deadline += m_period;
 
+                current_time = std::chrono::high_resolution_clock::now(); 
+
+                // wait period 
                 if (deadline > current_time)
                 { 
-                    // sleep until we are close to the deadline (at 90%)
-                    const double ratio = 0.9;
-                    auto remaining_time = std::chrono::duration_cast<std::chrono::microseconds>(deadline - current_time);
+                    const auto remaining_time = std::chrono::duration_cast<std::chrono::microseconds>(deadline - current_time);
+                    // wait between 90% and 96% of the remaining time depending on scheduling mode
+                    const double ratio = (earliest_deadline_enabled) ? 0.96 : 0.9;
+
+                    // sleep until we are close to the deadline                   
                     const auto sleep_time = std::chrono::duration<int, std::micro>(static_cast<int>(ratio*remaining_time.count()));
                     std::this_thread::sleep_for(sleep_time);
 
-                    current_time = std::chrono::high_resolution_clock::now();
-                    
-                    // active wait loop
-                    while (deadline > current_time)
-                    {
-                        current_time = std::chrono::high_resolution_clock::now();
-                    }
-                }  
-
-                deadline += m_period;              
-            }
+                } // end if wait period needed           
+            } // periodic task loop
         }      
 
         std::function<void(std::shared_ptr<Context>)> m_routine;
