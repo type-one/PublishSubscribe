@@ -177,6 +177,13 @@ void test_publish_subscribe()
     subject2->subscribe(my_topic::system, observer2);
     subject2->subscribe(my_topic::generic, async_observer);
 
+    subject1->subscribe(my_topic::generic, "loose_coupled_handler_1",
+        [](const my_topic& topic, const std::string& event, const std::string& origin)
+        {
+            std::cout << "handler [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event (" << event
+                      << ") from " << origin << std::endl;
+        });
+
     subject1->publish(my_topic::generic, "toto");
 
     subject1->unsubscribe(my_topic::generic, observer1);
@@ -184,6 +191,8 @@ void test_publish_subscribe()
     subject1->publish(my_topic::generic, "titi");
 
     subject1->publish(my_topic::system, "tata");
+
+    subject1->unsubscribe(my_topic::generic, "loose_coupled_handler_1");
 
     std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(500));
 

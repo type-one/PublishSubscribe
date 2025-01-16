@@ -29,6 +29,7 @@
 #define __SYNC_OBSERVER_HPP__
 
 #include <cstddef>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -56,10 +57,14 @@ namespace tools
     using sync_subscription = std::pair<Topic, std::shared_ptr<sync_observer<Topic, Evt>>>;
 
     template <typename Topic, typename Evt>
+    using loose_coupled_handler = std::function<void(const Topic&, const Evt&, const std::string&)>;
+
+    template <typename Topic, typename Evt>
     class sync_subject
     {
     public:
         using sync_observer_shared_ptr = std::shared_ptr<sync_observer<Topic, Evt>>;
+        using handler = loose_coupled_handler<Topic, Evt>;
 
         sync_subject() = delete;
         sync_subject(const std::string& name)
@@ -77,6 +82,12 @@ namespace tools
             m_subscribers.insert({ topic, observer });
         }
 
+        void subscribe(const Topic& topic, const std::string& handler_name, handler handler)
+        {
+            std::lock_guard guard(m_mutex);
+            m_handlers.insert({ topic, std::make_pair(handler_name, handler) });
+        }
+
         void unsubscribe(const Topic& topic, sync_observer_shared_ptr observer)
         {
             std::lock_guard guard(m_mutex);
@@ -91,9 +102,24 @@ namespace tools
             }
         }
 
+        void unsubscribe(const Topic& topic, const std::string& handler_name)
+        {
+            std::lock_guard guard(m_mutex);
+
+            for (auto [it, range_end] = m_handlers.equal_range(topic); it != range_end; ++it)
+            {
+                if (it->second.first == handler_name)
+                {
+                    m_handlers.erase(it);
+                    break;
+                }
+            }
+        }
+
         virtual void publish(const Topic& topic, const Evt& event)
         {
             std::vector<sync_observer_shared_ptr> to_inform;
+            std::vector<handler> to_invoke;
 
             {
                 std::lock_guard guard(m_mutex);
@@ -102,17 +128,28 @@ namespace tools
                 {
                     to_inform.push_back(it->second);
                 }
+
+                for (auto [it, range_end] = m_handlers.equal_range(topic); it != range_end; ++it)
+                {
+                    to_invoke.emplace_back(it->second.second);
+                }
             }
 
             for (auto& observer : to_inform)
             {
                 observer->inform(topic, event, m_name);
             }
+
+            for (auto& handler : to_invoke)
+            {
+                handler(topic, event, m_name);
+            }
         }
 
     private:
         std::mutex m_mutex;
         std::multimap<Topic, sync_observer_shared_ptr> m_subscribers;
+        std::multimap<Topic, std::pair<std::string, handler>> m_handlers;
         std::string m_name;
     };
 
