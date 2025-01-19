@@ -11,6 +11,7 @@ Goodies:
 - simple waitable object on top of std::mutex and std::condition_variable
 - simple non_copyable abstract class
 - simple periodic task helper
+- simple thread-safe ring buffer on top of std::array
 - queuable commands
 
 https://github.com/type-one/PublishSubscribe
@@ -31,7 +32,7 @@ An attempt to write a flexible little framework that can be used on desktop PCs 
 Can be compiled on Linux and Windows, and should be easily
 adapted for other platforms (micro-computers, micro-controllers)
 
-On Linux, just use cmake . -B build
+On Linux, just use cmake . -B build then go to build directory and run make (or ninja)
 On Windows, just use cmake-gui to generate a Visual Studio solution
 
 # Author

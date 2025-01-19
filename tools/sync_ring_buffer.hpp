@@ -25,69 +25,78 @@
 
 #pragma once
 
-#if !defined(__SYNC_QUEUE_HPP__)
-#define __SYNC_QUEUE_HPP__
+#if !defined(__SYNC_RING_BUFFER_HPP__)
+#define __SYNC_RING_BUFFER_HPP__
 
+#include <cstddef>
 #include <mutex>
-#include <queue>
 
 #include "non_copyable.hpp"
+#include "ring_buffer.hpp"
 
 namespace tools
 {
-    template <typename T>
-    class sync_queue : public non_copyable
+    template <typename T, std::size_t Capacity>
+    class sync_ring_buffer : public non_copyable
     {
     public:
-        sync_queue() = default;
-        ~sync_queue() = default;
+        sync_ring_buffer() = default;
+        ~sync_ring_buffer() = default;
 
         void push(const T& elem)
         {
             std::lock_guard guard(m_mutex);
-            m_queue.push(elem);
+            m_ring_buffer.push(elem);
         }
 
         void emplace(T&& elem)
         {
             std::lock_guard guard(m_mutex);
-            m_queue.emplace(std::move(elem));
+            m_ring_buffer.emplace(std::move(elem));
         }
 
         void pop()
         {
             std::lock_guard guard(m_mutex);
-            m_queue.pop();
+            m_ring_buffer.pop();
         }
 
         T front()
         {
             std::lock_guard guard(m_mutex);
-            return m_queue.front();
+            return m_ring_buffer.front();
         }
 
         T back()
         {
             std::lock_guard guard(m_mutex);
-            return m_queue.back();
+            return m_ring_buffer.back();
         }
 
         bool empty()
         {
             std::lock_guard guard(m_mutex);
-            return m_queue.empty();
+            return m_ring_buffer.empty();
+        }
+
+        bool full()
+        {
+            std::lock_guard guard(m_mutex);
+            return m_ring_buffer.full();
         }
 
         std::size_t size()
         {
             std::lock_guard guard(m_mutex);
-            return m_queue.size();
+            return m_ring_buffer.size();
         }
 
+        constexpr std::size_t capacity() const { return m_ring_buffer.capacity(); }
+
     private:
-        std::queue<T> m_queue;
+        ring_buffer<T, Capacity> m_ring_buffer;
         std::mutex m_mutex;
     };
 }
 
-#endif //  __SYNC_QUEUE_HPP__
+#endif //  __SYNC_RING_BUFFER_HPP__

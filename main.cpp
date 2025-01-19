@@ -26,32 +26,77 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <iostream>
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <vector>
+
 
 #include "tools/async_observer.hpp"
 #include "tools/histogram.hpp"
 #include "tools/periodic_task.hpp"
+#include "tools/ring_buffer.hpp"
 #include "tools/sync_dictionary.hpp"
 #include "tools/sync_observer.hpp"
 #include "tools/sync_queue.hpp"
+#include "tools/sync_ring_buffer.hpp"
 
-void test_sync_queue()
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_ring_buffer()
 {
-    tools::sync_queue<std::string> str_queue;
+    std::cout << "-- ring buffer --" << std::endl;
+    tools::ring_buffer<std::string, 64U> str_queue;
 
-    str_queue.push("toto");
+    str_queue.emplace("toto");
 
     auto item = str_queue.front();
+
+    std::cout << item << std::endl;
 
     str_queue.pop();
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_sync_ring_buffer()
+{
+    std::cout << "-- sync ring buffer --" << std::endl;
+    tools::sync_ring_buffer<std::string, 64U> str_queue;
+
+    str_queue.emplace("toto");
+
+    auto item = str_queue.front();
+
+    std::cout << item << std::endl;
+
+    str_queue.pop();
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_sync_queue()
+{
+    std::cout << "-- sync queue --" << std::endl;
+    tools::sync_queue<std::string> str_queue;
+
+    str_queue.emplace("toto");
+
+    auto item = str_queue.front();
+
+    std::cout << item << std::endl;
+
+    str_queue.pop();
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
 void test_sync_dictionary()
 {
+    std::cout << "-- sync dictionary --" << std::endl;
     tools::sync_dictionary<std::string, std::string> str_dict;
 
     str_dict.add("toto", "blob");
@@ -60,10 +105,12 @@ void test_sync_dictionary()
 
     if (result.has_value())
     {
+        std::cout << *result << std::endl;
         str_dict.remove("toto");
     }
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------
 
 enum class my_topic
 {
@@ -161,6 +208,7 @@ private:
 
 void test_publish_subscribe()
 {
+    std::cout << "-- publish subscribe --" << std::endl;
     auto observer1 = std::make_shared<my_observer>();
     auto observer2 = std::make_shared<my_observer>();
     auto async_observer = std::make_shared<my_async_observer>();
@@ -202,6 +250,8 @@ void test_publish_subscribe()
     subject2->publish(my_topic::system, "tantine");
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------
+
 struct my_periodic_task_context
 {
     std::atomic<int> loop_counter = 0;
@@ -212,6 +262,7 @@ using my_periodic_task = tools::periodic_task<my_periodic_task_context>;
 
 void test_periodic_task()
 {
+    std::cout << "-- periodic task --" << std::endl;
     auto lambda = [](std::shared_ptr<my_periodic_task_context> context) -> void
     {
         context->loop_counter += 1;
@@ -219,15 +270,15 @@ void test_periodic_task()
     };
 
     auto context = std::make_shared<my_periodic_task_context>();
-    // 10 ms period
-    const auto period = std::chrono::duration<int, std::micro>(10000);
+    // 20 ms period
+    constexpr const auto period = std::chrono::duration<int, std::micro>(20000);
     const auto start_timepoint = std::chrono::high_resolution_clock::now();
     my_periodic_task task1(lambda, context, period);
 
     // sleep 2 sec
     std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
 
-    std::cout << "nb of periodic loops = " << context->loop_counter << std::endl;
+    std::cout << "nb of periodic loops = " << context->loop_counter.load() << std::endl;
 
     auto previous_timepoint = start_timepoint;
     while (!context->time_points.empty())
@@ -239,6 +290,8 @@ void test_periodic_task()
         previous_timepoint = measured_timepoint;
     }
 }
+
+//--------------------------------------------------------------------------------------------------------------------------------
 
 class my_collector : public base_observer
 {
@@ -271,8 +324,11 @@ private:
     tools::histogram<double> m_histogram;
 };
 
+//--------------------------------------------------------------------------------------------------------------------------------
+
 void test_periodic_publish_subscribe()
 {
+    std::cout << "-- periodic publish subscribe --" << std::endl;
     auto monitoring = std::make_shared<my_async_observer>();
     auto data_source = std::make_shared<my_subject>("data_source");
     auto histogram_feeder = std::make_shared<my_collector>();
@@ -303,9 +359,11 @@ void test_periodic_publish_subscribe()
     histogram_feeder->display_stats();
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------
 
 void test_queued_commands()
 {
+    std::cout << "-- queued commands --" << std::endl;
     tools::sync_queue<std::function<void()>> commands_queue;
 
     commands_queue.emplace([]() { std::cout << "hello" << std::endl; });
@@ -320,17 +378,44 @@ void test_queued_commands()
     }
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_ring_buffer_commands()
+{
+    std::cout << "-- ring buffer commands --" << std::endl;
+    tools::sync_ring_buffer<std::function<void()>, 128U> commands_queue;
+
+    commands_queue.emplace([]() { std::cout << "hello" << std::endl; });
+
+    commands_queue.emplace([]() { std::cout << "world" << std::endl; });
+
+    while (!commands_queue.empty())
+    {
+        auto call = commands_queue.front();
+        call();
+        commands_queue.pop();
+    }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+
 int main(int argc, char* argv[])
 {
     (void)argc;
     (void)argv;
 
+    test_ring_buffer();
+    test_sync_ring_buffer();
     test_sync_queue();
     test_sync_dictionary();
+
     test_publish_subscribe();
     test_periodic_task();
     test_periodic_publish_subscribe();
+
     test_queued_commands();
+    test_ring_buffer_commands();
 
     return 0;
 }
