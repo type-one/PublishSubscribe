@@ -11,6 +11,7 @@ Goodies:
 - simple waitable object on top of std::mutex and std::condition_variable
 - simple non_copyable abstract class
 - simple periodic task helper
+- simple worker task helper
 - simple thread-safe ring buffer on top of std::array
 - queuable commands
 

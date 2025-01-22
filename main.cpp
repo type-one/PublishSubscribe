@@ -23,15 +23,19 @@
 // 3. This notice may not be removed or altered from any source distribution.  //
 //-----------------------------------------------------------------------------//
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <iostream>
+#include <memory>
+#include <random>
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 
@@ -43,6 +47,7 @@
 #include "tools/sync_observer.hpp"
 #include "tools/sync_queue.hpp"
 #include "tools/sync_ring_buffer.hpp"
+#include "tools/worker_task.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
@@ -263,8 +268,9 @@ using my_periodic_task = tools::periodic_task<my_periodic_task_context>;
 void test_periodic_task()
 {
     std::cout << "-- periodic task --" << std::endl;
-    auto lambda = [](std::shared_ptr<my_periodic_task_context> context) -> void
+    auto lambda = [](std::shared_ptr<my_periodic_task_context> context, const std::string& task_name) -> void
     {
+        (void)task_name;
         context->loop_counter += 1;
         context->time_points.emplace(std::chrono::high_resolution_clock::now());
     };
@@ -273,7 +279,7 @@ void test_periodic_task()
     // 20 ms period
     constexpr const auto period = std::chrono::duration<int, std::micro>(20000);
     const auto start_timepoint = std::chrono::high_resolution_clock::now();
-    my_periodic_task task1(lambda, context, period);
+    my_periodic_task task1(lambda, context, "periodic task 1", period);
 
     // sleep 2 sec
     std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
@@ -333,8 +339,10 @@ void test_periodic_publish_subscribe()
     auto data_source = std::make_shared<my_subject>("data_source");
     auto histogram_feeder = std::make_shared<my_collector>();
 
-    auto sampler = [&data_source](std::shared_ptr<my_periodic_task_context> context) -> void
+    auto sampler = [&data_source](std::shared_ptr<my_periodic_task_context> context, const std::string& task_name) -> void
     {
+        (void)task_name;
+
         context->loop_counter += 1;
 
         // mocked signal
@@ -351,7 +359,7 @@ void test_periodic_publish_subscribe()
     auto context = std::make_shared<my_periodic_task_context>();
     const auto period = std::chrono::duration<int, std::milli>(100);
     {
-        my_periodic_task periodic_task(sampler, context, period);
+        my_periodic_task periodic_task(sampler, context, "periodic task 1", period);
 
         std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
     }
@@ -399,6 +407,64 @@ void test_ring_buffer_commands()
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
+struct my_worker_task_context
+{
+    std::atomic<int> loop_counter = 0;
+    tools::sync_queue<std::chrono::high_resolution_clock::time_point> time_points;
+};
+
+using my_worker_task = tools::worker_task<my_worker_task_context>;
+
+void test_worker_tasks()
+{
+    std::cout << "-- worker tasks --" << std::endl;
+
+    auto context = std::make_shared<my_worker_task_context>();
+
+    auto task1 = std::make_unique<my_worker_task>(context, "worker_1");
+    auto task2 = std::make_unique<my_worker_task>(context, "worker_2");
+
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(0, 1);
+    std::array<std::unique_ptr<my_worker_task>, 2> tasks = { std::move(task1), std::move(task2) };
+
+    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(100)); // 100 ms
+
+    const auto start_timepoint = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < 20; ++i)
+    {
+        auto idx = distribution(generator);
+
+        tasks[idx]->delegate(
+            [](auto context, const auto& task_name) -> void
+            {
+                std::cout << "job " << context->loop_counter.load() << " on worker task " << task_name.c_str() << std::endl;
+                context->loop_counter++;
+                context->time_points.emplace(std::chrono::high_resolution_clock::now());
+            });
+
+        std::this_thread::yield();
+    }
+
+    // sleep 2 sec
+    std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
+
+    std::cout << "nb of periodic loops = " << context->loop_counter.load() << std::endl;
+
+    auto previous_timepoint = start_timepoint;
+    while (!context->time_points.empty())
+    {
+        const auto measured_timepoint = context->time_points.front();
+        context->time_points.pop();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(measured_timepoint - previous_timepoint);
+        std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
+        previous_timepoint = measured_timepoint;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
 
 int main(int argc, char* argv[])
 {
@@ -416,6 +482,7 @@ int main(int argc, char* argv[])
 
     test_queued_commands();
     test_ring_buffer_commands();
+    test_worker_tasks();
 
     return 0;
 }

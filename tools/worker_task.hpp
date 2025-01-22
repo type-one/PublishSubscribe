@@ -2,7 +2,7 @@
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
 //                                                                             //
-// https://github.com/type-one/PublishSubscribe                                //
+// https://github.com/type-one/PublishSubscribeESP32                           //
 //                                                                             //
 // MIT License                                                                 //
 //                                                                             //
@@ -25,8 +25,8 @@
 
 #pragma once
 
-#if !defined(__PERIODIC_TASK_HPP__)
-#define __PERIODIC_TASK_HPP__
+#if !defined(__WORKER_TASK_HPP__)
+#define __WORKER_TASK_HPP__
 
 #include <atomic>
 #include <chrono>
@@ -35,83 +35,80 @@
 #include <string>
 #include <thread>
 
-#include "linux_sched_deadline.hpp"
-#include "non_copyable.hpp"
+#if defined(__linux__)
+#include <pthread.h>
+#endif
+
+#include "tools/non_copyable.hpp"
+#include "tools/sync_object.hpp"
+#include "tools/sync_queue.hpp"
 
 namespace tools
 {
     template <typename Context>
-    class periodic_task : public non_copyable
+    class worker_task : public non_copyable
     {
 
     public:
-        periodic_task() = delete;
+        worker_task() = delete;
 
         using call_back = std::function<void(std::shared_ptr<Context>, const std::string& task_name)>;
 
-        periodic_task(call_back&& routine, std::shared_ptr<Context> context, const std::string& task_name,
-            const std::chrono::duration<int, std::micro>& period)
-            : m_routine(std::move(routine))
-            , m_context(context)
+        worker_task(std::shared_ptr<Context> context, const std::string& task_name)
+            : m_context(context)
             , m_task_name(task_name)
-            , m_period(period)
         {
-            m_task = std::make_unique<std::thread>([this]() { periodic_call(); });
+            m_task = std::make_unique<std::thread>(
+                [this]()
+                {
+#if defined(__linux__)
+                    pthread_setname_np(pthread_self(), m_task_name.c_str());
+#endif
+                    run_loop();
+                });
         }
 
-        ~periodic_task()
+        ~worker_task()
         {
             m_stop_task.store(true);
+            m_work_sync.signal();
             m_task->join();
         }
 
-    private:
-        void periodic_call()
+        // note: native handle allows specific OS calls like setting scheduling policy or setting priority
+        void* native_handle() const { return reinterpret_cast<void*>(m_task->native_handle()); }
+
+        void delegate(call_back&& work)
         {
-            auto start_time = std::chrono::high_resolution_clock::now();
-            auto deadline = start_time + m_period;
-
-            bool earliest_deadline_enabled = set_earliest_deadline_scheduling(start_time, m_period);
-
-            while (!m_stop_task.load())
-            {
-                // active wait loop
-                std::chrono::high_resolution_clock::time_point current_time;
-                do
-                {
-                    current_time = std::chrono::high_resolution_clock::now();
-                } while (deadline > current_time);
-
-                // execute given periodic function
-                m_routine(m_context, m_task_name);
-
-                // compute next deadline
-                deadline += m_period;
-
-                current_time = std::chrono::high_resolution_clock::now();
-
-                // wait period
-                if (deadline > current_time)
-                {
-                    const auto remaining_time = std::chrono::duration_cast<std::chrono::microseconds>(deadline - current_time);
-                    // wait between 90% and 96% of the remaining time depending on scheduling mode
-                    const double ratio = (earliest_deadline_enabled) ? 0.96 : 0.9;
-
-                    // sleep until we are close to the deadline
-                    const auto sleep_time = std::chrono::duration<int, std::micro>(static_cast<int>(ratio * remaining_time.count()));
-                    std::this_thread::sleep_for(sleep_time);
-
-                } // end if wait period needed
-            }     // periodic task loop
+            m_work_queue.emplace(std::move(work));
+            m_work_sync.signal();
         }
 
-        call_back m_routine;
+    private:
+        void run_loop()
+        {
+            while (!m_stop_task.load())
+            {
+                m_work_sync.wait_for_signal();
+
+                while (!m_work_queue.empty())
+                {
+                    auto work = m_work_queue.front();
+                    m_work_queue.pop();
+
+                    work(m_context, m_task_name);
+                }
+            } // run loop
+        }
+
+        call_back m_startup_routine;
+        tools::sync_object m_work_sync;
+        tools::sync_queue<call_back> m_work_queue;
         std::shared_ptr<Context> m_context;
         std::string m_task_name;
-        std::chrono::duration<int, std::micro> m_period;
-        std::unique_ptr<std::thread> m_task;
         std::atomic_bool m_stop_task = false;
+        std::unique_ptr<std::thread> m_task;
     };
 }
 
-#endif //  __PERIODIC_TASK_HPP__
+#endif //  __WORKER_TASK_HPP__
