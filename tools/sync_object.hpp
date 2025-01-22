@@ -28,12 +28,12 @@
 #if !defined(__SYNC_OBJECT_HPP__)
 #define __SYNC_OBJECT_HPP__
 
-#include "non_copyable.hpp"
-
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+
+#include "tools/non_copyable.hpp"
 
 namespace tools
 {

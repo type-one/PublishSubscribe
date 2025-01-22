@@ -23,11 +23,11 @@
 // 3. This notice may not be removed or altered from any source distribution.  //
 //-----------------------------------------------------------------------------//
 
-#include "sync_object.hpp"
-
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+
+#include "tools/sync_object.hpp"
 
 namespace tools
 {

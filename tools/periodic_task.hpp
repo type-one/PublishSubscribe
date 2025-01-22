@@ -35,8 +35,8 @@
 #include <string>
 #include <thread>
 
-#include "linux_sched_deadline.hpp"
-#include "non_copyable.hpp"
+#include "tools/linux/linux_sched_deadline.hpp"
+#include "tools/non_copyable.hpp"
 
 namespace tools
 {

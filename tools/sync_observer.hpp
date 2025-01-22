@@ -36,7 +36,7 @@
 #include <string>
 #include <utility>
 
-#include "non_copyable.hpp"
+#include "tools/non_copyable.hpp"
 
 namespace tools
 {

@@ -31,8 +31,8 @@
 #include <cstddef>
 #include <mutex>
 
-#include "non_copyable.hpp"
-#include "ring_buffer.hpp"
+#include "tools/non_copyable.hpp"
+#include "tools/ring_buffer.hpp"
 
 namespace tools
 {

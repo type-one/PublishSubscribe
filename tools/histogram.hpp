@@ -33,7 +33,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "non_copyable.hpp"
+#include "tools/non_copyable.hpp"
 
 #ifndef M_TWO_PI
 #define M_TWO_PI (2.0 * 3.14159265358979323846)

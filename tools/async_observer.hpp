@@ -33,9 +33,9 @@
 #include <tuple>
 #include <vector>
 
-#include "sync_object.hpp"
-#include "sync_observer.hpp"
-#include "sync_queue.hpp"
+#include "tools/sync_object.hpp"
+#include "tools/sync_observer.hpp"
+#include "tools/sync_queue.hpp"
 
 namespace tools
 {

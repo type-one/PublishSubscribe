@@ -31,7 +31,7 @@
 #include <mutex>
 #include <queue>
 
-#include "non_copyable.hpp"
+#include "tools/non_copyable.hpp"
 
 namespace tools
 {
