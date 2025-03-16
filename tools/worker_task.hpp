@@ -93,10 +93,11 @@ namespace tools
 
                 while (!m_work_queue.empty())
                 {
-                    auto work = m_work_queue.front();
-                    m_work_queue.pop();
-
-                    work(m_context, m_task_name);
+                    auto work = m_work_queue.front_pop();
+                    if (work.has_value())
+                    {
+                        (*work)(m_context, m_task_name);
+                    }
                 }
             } // run loop
         }

@@ -30,6 +30,8 @@
 
 #include <cstddef>
 #include <mutex>
+#include <optional>
+#include <utility>
 
 #include "tools/non_copyable.hpp"
 #include "tools/ring_buffer.hpp"
@@ -58,19 +60,44 @@ namespace tools
         void pop()
         {
             std::lock_guard guard(m_mutex);
-            m_ring_buffer.pop();
+            if (!m_ring_buffer.empty())
+            {
+                m_ring_buffer.pop();
+            }
         }
 
-        T front()
+        std::optional<T> front_pop()
         {
+            std::optional<T> item;
             std::lock_guard guard(m_mutex);
-            return m_ring_buffer.front();
+            if (!m_ring_buffer.empty())
+            {
+                item = m_ring_buffer.front();
+                m_ring_buffer.pop();
+            }
+            return item;
         }
 
-        T back()
+        std::optional<T> front()
         {
+            std::optional<T> item;
             std::lock_guard guard(m_mutex);
-            return m_ring_buffer.back();
+            if (!m_ring_buffer.empty())
+            {
+                item = m_ring_buffer.front();
+            }
+            return item;
+        }
+
+        std::optional<T> back()
+        {
+            std::optional<T> item;
+            std::lock_guard guard(m_mutex);
+            if (!m_ring_buffer.empty())
+            {
+                item = m_ring_buffer.back();
+            }
+            return item;
         }
 
         bool empty()

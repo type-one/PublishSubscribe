@@ -74,11 +74,11 @@ void test_sync_ring_buffer()
 
     str_queue.emplace("toto");
 
-    auto item = str_queue.front();
-
-    std::cout << item << std::endl;
-
-    str_queue.pop();
+    auto item = str_queue.front_pop();
+    if (item.has_value())
+    {
+        std::cout << *item << std::endl;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -90,11 +90,11 @@ void test_sync_queue()
 
     str_queue.emplace("toto");
 
-    auto item = str_queue.front();
-
-    std::cout << item << std::endl;
-
-    str_queue.pop();
+    auto item = str_queue.front_pop();
+    if (item.has_value())
+    {
+        std::cout << *item << std::endl;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -289,11 +289,14 @@ void test_periodic_task()
     auto previous_timepoint = start_timepoint;
     while (!context->time_points.empty())
     {
-        const auto measured_timepoint = context->time_points.front();
-        context->time_points.pop();
-        const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(measured_timepoint - previous_timepoint);
-        std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
-        previous_timepoint = measured_timepoint;
+        const auto measured_timepoint = context->time_points.front_pop();
+
+        if (measured_timepoint.has_value())
+        {
+            const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(*measured_timepoint - previous_timepoint);
+            std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
+            previous_timepoint = *measured_timepoint;
+        }
     }
 }
 
@@ -380,9 +383,11 @@ void test_queued_commands()
 
     while (!commands_queue.empty())
     {
-        auto call = commands_queue.front();
-        call();
-        commands_queue.pop();
+        auto call = commands_queue.front_pop();
+        if (call.has_value())
+        {
+            (*call)();
+        }
     }
 }
 
@@ -399,9 +404,11 @@ void test_ring_buffer_commands()
 
     while (!commands_queue.empty())
     {
-        auto call = commands_queue.front();
-        call();
-        commands_queue.pop();
+        auto call = commands_queue.front_pop();
+        if (call.has_value())
+        {
+            (*call)();
+        }
     }
 }
 
@@ -455,11 +462,14 @@ void test_worker_tasks()
     auto previous_timepoint = start_timepoint;
     while (!context->time_points.empty())
     {
-        const auto measured_timepoint = context->time_points.front();
-        context->time_points.pop();
-        const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(measured_timepoint - previous_timepoint);
-        std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
-        previous_timepoint = measured_timepoint;
+        const auto measured_timepoint = context->time_points.front_pop();
+
+        if (measured_timepoint.has_value())
+        {
+            const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(*measured_timepoint - previous_timepoint);
+            std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
+            previous_timepoint = *measured_timepoint;
+        }
     }
 }
 

@@ -29,7 +29,9 @@
 #define __SYNC_QUEUE_HPP__
 
 #include <mutex>
+#include <optional>
 #include <queue>
+#include <utility>
 
 #include "tools/non_copyable.hpp"
 
@@ -57,19 +59,44 @@ namespace tools
         void pop()
         {
             std::lock_guard guard(m_mutex);
-            m_queue.pop();
+            if (!m_queue.empty())
+            {
+                m_queue.pop();
+            }
         }
 
-        T front()
+        std::optional<T> front_pop()
         {
+            std::optional<T> item;
             std::lock_guard guard(m_mutex);
-            return m_queue.front();
+            if (!m_queue.empty())
+            {
+                item = m_queue.front();
+                m_queue.pop();
+            }
+            return item;
         }
 
-        T back()
+        std::optional<T> front()
         {
+            std::optional<T> item;
             std::lock_guard guard(m_mutex);
-            return m_queue.back();
+            if (!m_queue.empty())
+            {
+                item = m_queue.front();
+            }
+            return item;
+        }
+
+        std::optional<T> back()
+        {
+            std::optional<T> item;
+            std::lock_guard guard(m_mutex);
+            if (!m_queue.empty())
+            {
+                item = m_queue.back();
+            }
+            return item;
         }
 
         bool empty()

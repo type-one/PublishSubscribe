@@ -34,6 +34,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 
 #include "tools/linux/linux_sched_deadline.hpp"
 #include "tools/non_copyable.hpp"

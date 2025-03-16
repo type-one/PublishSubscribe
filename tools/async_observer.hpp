@@ -61,8 +61,11 @@ namespace tools
 
             while (!m_evt_queue.empty())
             {
-                events.emplace_back(m_evt_queue.front());
-                m_evt_queue.pop();
+                auto item = m_evt_queue.front_pop();
+                if (item.has_value())
+                {
+                    events.emplace_back(*item);
+                }
             }
 
             return events;
@@ -74,8 +77,7 @@ namespace tools
 
             if (!m_evt_queue.empty())
             {
-                entry = m_evt_queue.front();
-                m_evt_queue.pop();
+                entry = m_evt_queue.front_pop();
             }
 
             return entry;
@@ -89,9 +91,12 @@ namespace tools
             {
                 entry = m_evt_queue.back();
 
-                while (!m_evt_queue.empty())
+                if (entry.has_value())
                 {
-                    m_evt_queue.pop();
+                    while (!m_evt_queue.empty())
+                    {
+                        m_evt_queue.pop();
+                    }
                 }
             }
 
