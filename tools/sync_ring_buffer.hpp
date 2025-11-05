@@ -42,8 +42,8 @@
 #define SYNC_RING_BUFFER_HPP_
 
 #include <cstddef>
-#include <mutex>
 #include <optional>
+#include <shared_mutex>
 #include <utility>
 
 #include "tools/non_copyable.hpp"
@@ -70,19 +70,19 @@ namespace tools
 
         void push(const T& elem)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             m_ring_buffer.push(elem);
         }
 
         void emplace(T&& elem)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             m_ring_buffer.emplace(std::move(elem));
         }
 
         void pop()
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             if (!m_ring_buffer.empty())
             {
                 m_ring_buffer.pop();
@@ -92,7 +92,7 @@ namespace tools
         std::optional<T> front_pop()
         {
             std::optional<T> item;
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             if (!m_ring_buffer.empty())
             {
                 item = m_ring_buffer.front();
@@ -104,7 +104,7 @@ namespace tools
         std::optional<T> front() const
         {
             std::optional<T> item;
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             if (!m_ring_buffer.empty())
             {
                 item = m_ring_buffer.front();
@@ -115,7 +115,7 @@ namespace tools
         std::optional<T> back() const
         {
             std::optional<T> item;
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             if (!m_ring_buffer.empty())
             {
                 item = m_ring_buffer.back();
@@ -125,19 +125,19 @@ namespace tools
 
         [[nodiscard]] bool empty() const
         {
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             return m_ring_buffer.empty();
         }
 
         [[nodiscard]] bool full() const
         {
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             return m_ring_buffer.full();
         }
 
         [[nodiscard]] std::size_t size() const
         {
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             return m_ring_buffer.size();
         }
 
@@ -148,7 +148,7 @@ namespace tools
 
     private:
         ring_buffer<T, Capacity> m_ring_buffer;
-        std::mutex m_mutex;
+        std::shared_mutex m_mutex;
     };
 }
 
