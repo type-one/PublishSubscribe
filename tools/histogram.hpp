@@ -1,3 +1,15 @@
+/**
+ * @file histogram.hpp
+ * @brief A class representing a histogram for counting occurrences of values.
+ *
+ * This file contains the definition of the histogram class template, which provides
+ * functionality for adding values, calculating statistical measures such as average,
+ * variance, median, and computing Gaussian probability.
+ *
+ * @author Laurent Lardinois
+ * @date January 2025
+ */
+
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,11 +37,12 @@
 
 #pragma once
 
-#if !defined(__HISTOGRAM_HPP__)
-#define __HISTOGRAM_HPP__
+#if !defined(HISTOGRAM_HPP_)
+#define HISTOGRAM_HPP_
 
 #include <algorithm>
 #include <cmath>
+#include <random>
 #include <unordered_map>
 #include <vector>
 
@@ -41,14 +54,28 @@
 
 namespace tools
 {
+    /**
+     * @brief A class representing a histogram for counting occurrences of values.
+     *
+     * @tparam T The type of values stored in the histogram.
+     */
     template <typename T>
-    class histogram : public non_copyable
+    class histogram : public non_copyable // NOLINT inherits from non copyable and non movable class
     {
     public:
         histogram() = default;
         ~histogram() = default;
+        struct thread_safe
+        {
+            static constexpr bool value = false;
+        };
 
-        void add(const T& value)
+        /**
+         * @brief Adds a value to the histogram and updates the occurrence count.
+         *
+         * @param value The value to be added to the histogram.
+         */
+        void add(T value)
         {
             if (0 == m_occurences.count(value)) // first time
             {
@@ -78,82 +105,226 @@ namespace tools
             ++m_total_count;
         }
 
-        constexpr T top() const { return m_top_value; }
+        /**
+         * @brief Returns the top value of the histogram.
+         *
+         * @return The top value of the histogram.
+         */
+        constexpr T top() const
+        {
+            return m_top_value;
+        }
 
-        constexpr int total_count() const { return m_total_count; }
+        /**
+         * @brief Returns the total count of values present in the histogram.
+         *
+         * @return The total count as an integer.
+         */
+        [[nodiscard]] constexpr int total_count() const
+        {
+            return m_total_count;
+        }
 
-        constexpr int top_occurence() const { return m_top_occurence; }
+        /**
+         * @brief Returns the highest occurrence count in the histogram.
+         *
+         * @return The highest occurrence count as an integer.
+         */
+        [[nodiscard]] constexpr int top_occurence() const
+        {
+            return m_top_occurence;
+        }
 
-        T average() const
+        /**
+         * @brief Calculates the average value of the histogram.
+         *
+         * This function computes the average value of the histogram by summing up the
+         * products of occurrences and their corresponding values, and then dividing
+         * by the total number of occurrences.
+         *
+         * @return The average value of the histogram as type T. If there are no
+         * occurrences, it returns 0.
+         */
+        [[nodiscard]] double average() const
         {
             double avg = 0.0;
-            double total = 0.0;
+            const auto total = static_cast<double>(m_total_count);
 
-            for (auto it = m_occurences.cbegin(); it != m_occurences.cend(); ++it)
+            for (auto itr = m_occurences.cbegin(); itr != m_occurences.cend(); ++itr)
             {
-                if (it->second > 0) // occurence
+                if (itr->second > 0) // occurence
                 {
-                    avg += static_cast<double>(it->second * it->first);
-                    total += static_cast<double>(it->second);
+                    avg += static_cast<double>(itr->second * itr->first);
                 }
             }
 
-            return (total > 0.0) ? static_cast<T>((avg / total) + 0.5) : static_cast<T>(0);
+            return (total > 0.0) ? (avg / total) : 0.0;
         }
 
-        T variance(const T& average) const
+        /**
+         * @brief Calculates the variance of the data set.
+         *
+         * This function computes the variance of the data set stored in the histogram.
+         *
+         * @param average The average value of the data set.
+         * @return The variance of the data set.
+         */
+        [[nodiscard]] double variance(double average) const
         {
             double vari = 0.0;
-            double total = 0.0;
+            const auto total = static_cast<double>(m_total_count);
 
-            for (auto it = m_occurences.cbegin(); it != m_occurences.cend(); ++it)
+            for (auto itr = m_occurences.cbegin(); itr != m_occurences.cend(); ++itr)
             {
-                if (it->second > 0) // occurence
+                if (itr->second > 0) // occurence
                 {
-                    const double v = static_cast<double>(it->first);
-                    vari += it->second * v * v;
-                    total += static_cast<double>(it->second);
+                    // https://www.calculatorsoup.com/calculators/statistics/standard-deviation-calculator.php
+                    const auto dva = static_cast<double>(itr->first) - average;
+                    vari += itr->second * (dva * dva);
                 }
             }
 
-            return (total > 0.0) ? static_cast<T>((vari / total) - static_cast<double>(average * average) + 0.5) : static_cast<T>(0);
+            return (total > 0.0) ? (vari / total) : 0.0;
         }
 
-        T median() const
+        /**
+         * @brief Calculates the standard deviation of the data set.
+         *
+         * This function computes the standard deviation of the data set stored in the histogram.
+         *
+         * @param variance The variance value of the data set.
+         * @return The standard deviation of the data set.
+         */
+        [[nodiscard]] double standard_deviation(double variance) const
+        {
+            return std::sqrt(variance);
+        }
+
+        /**
+         * @brief Computes the median value of the histogram.
+         *
+         * This function creates a sorted list of all occurrences and returns the median value.
+         * If the histogram is empty, it returns 0.
+         *
+         * @return The median value of the histogram.
+         */
+        [[nodiscard]] double median() const
         {
             std::vector<T> to_sort;
 
-            for (auto it = m_occurences.cbegin(); it != m_occurences.cend(); ++it)
+            for (auto itr = m_occurences.cbegin(); itr != m_occurences.cend(); ++itr)
             {
-                for (int i = 0; i < it->second; ++i) // occurence
+                for (int i = 0; i < itr->second; ++i) // occurence
                 {
-                    to_sort.emplace_back(it->first);
+                    to_sort.emplace_back(itr->first);
                 }
             }
 
             if (to_sort.empty())
             {
-                return static_cast<T>(0);
+                return 0.0;
             }
 
             std::sort(to_sort.begin(), to_sort.end());
 
-            return to_sort[to_sort.size() >> 1];
-        }
+            // https://www.calculator.net/mean-median-mode-range-calculator.html
 
-        double gaussian_probability(const T& value, const T& average, const T& variance) const
-        {
-            // https://fr.wikipedia.org/wiki/Loi_normale
-            if (variance > static_cast<T>(0))
+            const auto idx = to_sort.size() >> 1;
+            double value = 0.0;
+
+            if (to_sort.size() & 1U)
             {
-                const double sigma = std::sqrt(static_cast<double>(variance));
-                const double e = static_cast<double>(value - average) / sigma;
-                return std::exp(-0.5 * e * e) / (sigma * std::sqrt(M_TWO_PI));
+                // odd case
+                value = static_cast<double>(to_sort[idx]);
             }
             else
             {
-                return 0.0;
+                // even case
+                value = static_cast<double>(0.5 * (to_sort[idx] + to_sort[idx - 1])); // NOLINT math formula
             }
+
+            return value;
+        }
+
+        /**
+         * @brief Computes the Gaussian density of a given value.
+         *
+         * This function calculates the density of a given value under a Gaussian (normal) distribution
+         * characterized by the specified average and variance.
+         *
+         * @param value The value for which the density is to be computed.
+         * @param average The mean (average) of the Gaussian distribution.
+         * @param standard_deviation The standard deviation (sigma) of the Gaussian distribution.
+         * @return The density of the given value under the specified Gaussian distribution.
+         */
+        double gaussian_density(T value, double average, double standard_deviation) const // NOLINT keep it
+        {
+            // https://fr.wikipedia.org/wiki/Loi_normale
+            // https://www.savarese.org/math/gaussianintegral.html
+            double result = 0.0;
+            if (standard_deviation > 0.0)
+            {
+                static const double sqrt_two_pi = std::sqrt(M_TWO_PI);
+                const double sigma = standard_deviation;
+                const double epsilon = (static_cast<double>(value) - average) / sigma;
+                result = std::exp(-0.5 * epsilon * epsilon) / (sigma * sqrt_two_pi); // NOLINT math formula
+            }
+
+            return result;
+        }
+
+        /**
+         * @brief Calculates the Gaussian probability over a specified range using Monte Carlo integration.
+         *
+         * This function estimates the probability that a value falls within a specified range
+         * for a Gaussian distribution with a given average and standard deviation. The estimation
+         * is performed using Monte Carlo integration with a specified number of samples.
+         *
+         * @tparam T The type of the range values.
+         * @param range_from The lower bound of the range.
+         * @param range_to The upper bound of the range.
+         * @param average The mean (average) of the Gaussian distribution.
+         * @param standard_deviation The standard deviation of the Gaussian distribution.
+         * @param montecarlo_samples The number of Monte Carlo samples to use for the estimation.
+         * @return The estimated probability that a value falls within the specified range.
+         */
+        double gaussian_probability(
+            T range_from, T range_to, double average, double standard_deviation, int montecarlo_samples) const
+        {
+            // https://cameron-mcelfresh.medium.com/monte-carlo-integration-313b37157852
+            // https://www.savarese.org/math/gaussianintegral.html
+            // https://en.wikipedia.org/wiki/Gaussian_integral
+            // https://stackoverflow.com/questions/288739/generate-random-numbers-uniformly-over-an-entire-range
+            double result = 0.0;
+            if ((standard_deviation > 0.0) && (montecarlo_samples > 0))
+            {
+                std::random_device rand_dev;
+                std::mt19937 generator(rand_dev());
+
+                if constexpr (std::is_integral<T>::value)
+                {
+                    std::uniform_int_distribution<T> distr(range_from, range_to);
+                    for (int i = 0; i < montecarlo_samples; ++i)
+                    {
+                        const T value = distr(generator);
+                        result += gaussian_density(value, average, standard_deviation);
+                    }
+                }
+                else
+                {
+                    std::uniform_real_distribution<T> distr(range_from, range_to);
+                    for (int i = 0; i < montecarlo_samples; ++i)
+                    {
+                        const T value = distr(generator);
+                        result += gaussian_density(value, average, standard_deviation);
+                    }
+                }
+
+                result = (result * static_cast<double>(range_to - range_from))
+                    / static_cast<double>(montecarlo_samples - 1);
+            }
+
+            return result;
         }
 
     private:
@@ -164,4 +335,4 @@ namespace tools
     };
 }
 
-#endif //  __HISTOGRAM_HPP__
+#endif //  HISTOGRAM_HPP_

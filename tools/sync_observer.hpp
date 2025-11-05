@@ -1,3 +1,14 @@
+/**
+ * @file sync_observer.hpp
+ * @brief Header file for the synchronous observer pattern implementation.
+ *
+ * This file contains the definition of the sync_observer and sync_subject classes,
+ * which implement a synchronous observer pattern for event handling.
+ *
+ * @date January 2025
+ * @author Laurent Lardinois
+ */
+
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,8 +36,8 @@
 
 #pragma once
 
-#if !defined(__SYNC_OBSERVER_HPP__)
-#define __SYNC_OBSERVER_HPP__
+#if !defined(SYNC_OBSERVER_HPP_)
+#define SYNC_OBSERVER_HPP_
 
 #include <cstddef>
 #include <functional>
@@ -44,11 +55,11 @@ namespace tools
     // http://www.codeproject.com/Articles/328365/Understanding-and-Implementing-Observer-Pattern
 
     template <typename Topic, typename Evt>
-    class sync_observer : public non_copyable
+    class sync_observer : public non_copyable // NOLINT inherits from non copyable/non movable
     {
     public:
         sync_observer() = default;
-        virtual ~sync_observer() { }
+        virtual ~sync_observer() = default;
 
         virtual void inform(const Topic& topic, const Evt& event, const std::string& origin) = 0;
     };
@@ -60,7 +71,7 @@ namespace tools
     using loose_coupled_handler = std::function<void(const Topic&, const Evt&, const std::string&)>;
 
     template <typename Topic, typename Evt>
-    class sync_subject
+    class sync_subject : public non_copyable // NOLINT inherits from non copyable and non movable class
     {
     public:
         using sync_observer_shared_ptr = std::shared_ptr<sync_observer<Topic, Evt>>;
@@ -72,9 +83,12 @@ namespace tools
         {
         }
 
-        virtual ~sync_subject() { }
+        virtual ~sync_subject() = default;
 
-        std::string name() const { return m_name; }
+        [[nodiscard]] std::string name() const
+        {
+            return m_name;
+        }
 
         void subscribe(const Topic& topic, sync_observer_shared_ptr observer)
         {
@@ -148,11 +162,11 @@ namespace tools
 
     private:
         std::mutex m_mutex;
-        std::multimap<Topic, sync_observer_shared_ptr> m_subscribers;
-        std::multimap<Topic, std::pair<std::string, handler>> m_handlers;
+        std::multimap<Topic, sync_observer_shared_ptr> m_subscribers = {};
+        std::multimap<Topic, std::pair<std::string, handler>> m_handlers = {};
         std::string m_name;
     };
 
 }
 
-#endif //  __SYNC_OBSERVER_HPP__
+#endif //  SYNC_OBSERVER_HPP_

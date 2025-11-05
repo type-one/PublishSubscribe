@@ -6,8 +6,8 @@ IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 Language: Cpp
-Standard: c++17
-ColumnLimit: 140
+Standard: c++20
+ColumnLimit: 120
 BreakBeforeBraces: Allman
 AlwaysBreakTemplateDeclarations: true
 AlignTrailingComments: true
@@ -18,10 +18,5 @@ SpaceBeforeAssignmentOperators: true
 SpacesBeforeTrailingComments: 1
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: false
 # SortIncludes: false
-
-
-
-
-

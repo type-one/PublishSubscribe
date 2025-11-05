@@ -1,3 +1,14 @@
+/**
+ * @file sync_queue.hpp
+ * @brief A thread-safe queue implementation.
+ *
+ * This file contains the definition of the sync_queue class, which provides a thread-safe
+ * queue with various methods to manipulate the queue.
+ *
+ * @author Laurent Lardinois
+ * @date January 2025
+ */
+
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,8 +36,8 @@
 
 #pragma once
 
-#if !defined(__SYNC_QUEUE_HPP__)
-#define __SYNC_QUEUE_HPP__
+#if !defined(SYNC_QUEUE_HPP_)
+#define SYNC_QUEUE_HPP_
 
 #include <mutex>
 #include <optional>
@@ -37,8 +48,16 @@
 
 namespace tools
 {
+    /**
+     * @brief A thread-safe queue implementation.
+     *
+     * This class provides a thread-safe queue with various methods to manipulate the queue.
+     * It inherits from non_copyable to prevent copying and moving.
+     *
+     * @tparam T The type of elements stored in the queue.
+     */
     template <typename T>
-    class sync_queue : public non_copyable
+    class sync_queue : public non_copyable // NOLINT inherits from non copyable/non movable
     {
     public:
         sync_queue() = default;
@@ -77,7 +96,7 @@ namespace tools
             return item;
         }
 
-        std::optional<T> front()
+        std::optional<T> front() const
         {
             std::optional<T> item;
             std::lock_guard guard(m_mutex);
@@ -88,7 +107,7 @@ namespace tools
             return item;
         }
 
-        std::optional<T> back()
+        std::optional<T> back() const
         {
             std::optional<T> item;
             std::lock_guard guard(m_mutex);
@@ -99,13 +118,13 @@ namespace tools
             return item;
         }
 
-        bool empty()
+        bool empty() const
         {
             std::lock_guard guard(m_mutex);
             return m_queue.empty();
         }
 
-        std::size_t size()
+        std::size_t size() const
         {
             std::lock_guard guard(m_mutex);
             return m_queue.size();
@@ -113,8 +132,8 @@ namespace tools
 
     private:
         std::queue<T> m_queue;
-        std::mutex m_mutex;
+        mutable std::mutex m_mutex;
     };
 }
 
-#endif //  __SYNC_QUEUE_HPP__
+#endif //  SYNC_QUEUE_HPP_

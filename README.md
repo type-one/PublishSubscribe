@@ -1,11 +1,13 @@
 # PublishSubscribe
 
 Agnostic, Lightweight and Portable Publish-Subscribe Helper
+
 - written in C++17 using templated classes
 - synchronous/asynchronous observer
 - topic subscription
 
 Goodies:
+
 - simple thread-safe dictionary helper on top of std::map
 - simple thread-safe queue on top of std::queue
 - simple waitable object on top of std::mutex and std::condition_variable
@@ -15,31 +17,30 @@ Goodies:
 - simple thread-safe ring buffer on top of std::array
 - queuable commands
 
-https://github.com/type-one/PublishSubscribe
+[GitHub repository](https://github.com/type-one/PublishSubscribe)
 
-
-# What
+## What
 
 Small test program written in C++17 to implement a simple Publish/Subscribe pattern. 
 The code is portable and lightweight.
 
-# Why
+## Why
 
 An attempt to write a flexible little framework that can be used on desktop PCs and embedded systems
 (micro-computers and micro-controllers) that are able to compile and run modern C++ code.
 
-# How
+## How
 
 Can be compiled on Linux and Windows, and should be easily
 adapted for other platforms (micro-computers, micro-controllers)
 
-On Linux, just use cmake . -B build then go to build directory and run make (or ninja)
-On Windows, just use cmake-gui to generate a Visual Studio solution
+On Linux, just use `cmake . -B build` then go to build directory and run make (or ninja)
+On Windows, just use `cmake-gui` to generate a Visual Studio solution
 
-# Author
+## Author
 
 Laurent Lardinois / Type One (TFL-TDV)
 
-https://be.linkedin.com/in/laurentlardinois
+[LinkedIn profile](https://be.linkedin.com/in/laurentlardinois)
 
-https://demozoo.org/sceners/19691/
+[Demozoo profile](https://demozoo.org/sceners/19691/)

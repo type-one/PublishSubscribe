@@ -1,3 +1,16 @@
+/**
+ * @file ring_buffer.hpp
+ * @brief A header file defining a thread-unsafe ring buffer class template with a fixed capacity.
+ *
+ * This file contains the definition of the ring_buffer class template, which provides
+ * a circular buffer implementation with a fixed capacity. The ring buffer supports
+ * operations such as push, pop, front, back, and various utility functions.
+ *
+ * @author Laurent Lardinois
+ *
+ * @date January 2025
+ */
+
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,8 +38,8 @@
 
 #pragma once
 
-#if !defined(__RING_BUFFER_HPP__)
-#define __RING_BUFFER_HPP__
+#if !defined(RING_BUFFER_HPP_)
+#define RING_BUFFER_HPP_
 
 #include <array>
 #include <cstddef>
@@ -34,6 +47,14 @@
 
 namespace tools
 {
+    /**
+     * @brief A class representing a ring buffer with a fixed capacity.
+     *
+     * This class provides a circular buffer implementation with a fixed capacity.
+     *
+     * @tparam T The type of elements stored in the ring buffer.
+     * @tparam Capacity The maximum number of elements the ring buffer can hold.
+     */
     template <typename T, std::size_t Capacity>
     class ring_buffer
     {
@@ -42,21 +63,21 @@ namespace tools
         ~ring_buffer() = default;
 
         ring_buffer(const ring_buffer& other)
+            : m_ring_buffer { other.m_ring_buffer }
+            , m_push_index { other.m_push_index }
+            , m_pop_index { other.m_pop_index }
+            , m_last_index { other.m_last_index }
+            , m_size { other.m_size }
         {
-            m_ring_buffer = other.m_ring_buffer;
-            m_push_index = other.m_push_index;
-            m_pop_index = other.m_pop_index;
-            m_last_index = other.m_last_index;
-            m_size = other.m_size;
         }
 
-        ring_buffer(ring_buffer&& other)
+        ring_buffer(ring_buffer&& other) noexcept
+            : m_ring_buffer { std::move(other.m_ring_buffer) }
+            , m_push_index { std::move(other.m_push_index) }
+            , m_pop_index { std::move(other.m_pop_index) }
+            , m_last_index { std::move(other.m_last_index) }
+            , m_size { std::move(other.m_size) }
         {
-            m_ring_buffer = std::move(other.m_ring_buffer);
-            m_push_index = std::move(other.m_push_index);
-            m_pop_index = std::move(other.m_pop_index);
-            m_last_index = std::move(other.m_last_index);
-            m_size = std::move(other.m_size);
         }
 
         ring_buffer& operator=(const ring_buffer& other)
@@ -73,7 +94,7 @@ namespace tools
             return *this;
         }
 
-        ring_buffer& operator=(ring_buffer&& other)
+        ring_buffer& operator=(ring_buffer&& other) noexcept
         {
             if (this != &other)
             {
@@ -109,20 +130,41 @@ namespace tools
             --m_size;
         }
 
-        T front() const { return m_ring_buffer[m_pop_index]; }
+        T front() const
+        {
+            return m_ring_buffer[m_pop_index];
+        }
 
-        T back() const { return m_ring_buffer[m_last_index]; }
+        T back() const
+        {
+            return m_ring_buffer[m_last_index];
+        }
 
-        bool empty() const { return m_push_index == m_pop_index; }
+        [[nodiscard]] bool empty() const
+        {
+            return m_push_index == m_pop_index;
+        }
 
-        bool full() const { return next_index(m_push_index) == m_pop_index; }
+        [[nodiscard]] bool full() const
+        {
+            return next_index(m_push_index) == m_pop_index;
+        }
 
-        std::size_t size() const { return m_size; }
+        [[nodiscard]] std::size_t size() const
+        {
+            return m_size;
+        }
 
-        constexpr std::size_t capacity() const { return Capacity; }
+        [[nodiscard]] constexpr std::size_t capacity() const
+        {
+            return Capacity;
+        }
 
     private:
-        constexpr std::size_t next_index(std::size_t index) const { return ((index + 1U) % Capacity); }
+        [[nodiscard]] constexpr std::size_t next_index(std::size_t index) const
+        {
+            return ((index + 1U) % Capacity);
+        }
 
         std::array<T, Capacity> m_ring_buffer;
         std::size_t m_push_index = 0U;
@@ -132,4 +174,4 @@ namespace tools
     };
 }
 
-#endif //  __RING_BUFFER_HPP__
+#endif //  RING_BUFFER_HPP_

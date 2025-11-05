@@ -1,3 +1,10 @@
+/**
+ * @file async_observer.hpp
+ * @brief A header file for the async_observer class providing asynchronous observation capabilities.
+ * @author Laurent Lardinois
+ * @date January 2025
+ */
+
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,8 +32,8 @@
 
 #pragma once
 
-#if !defined(__ASYNC_OBSERVER_HPP__)
-#define __ASYNC_OBSERVER_HPP__
+#if !defined(ASYNC_OBSERVER_HPP_)
+#define ASYNC_OBSERVER_HPP_
 
 #include <cstddef>
 #include <optional>
@@ -39,15 +46,22 @@
 
 namespace tools
 {
-
+    /**
+     * @brief A class that provides asynchronous observation capabilities.
+     *
+     * This class inherits from sync_observer and allows events to be queued and processed asynchronously.
+     *
+     * @tparam Topic The type of the topic associated with the events.
+     * @tparam Evt The type of the event data.
+     */
     template <typename Topic, typename Evt>
-    class async_observer : public sync_observer<Topic, Evt>
+    class async_observer : public sync_observer<Topic, Evt> // NOLINT inherits indirectly from non copyable/non movable
     {
     public:
         async_observer() = default;
-        virtual ~async_observer() { }
+        virtual ~async_observer() = default;
 
-        virtual void inform(const Topic& topic, const Evt& event, const std::string& origin) override
+        void inform(const Topic& topic, const Evt& event, const std::string& origin) override
         {
             m_evt_queue.push({ topic, event, origin });
             m_wakeable.signal();
@@ -103,13 +117,25 @@ namespace tools
             return entry;
         }
 
-        bool has_events() { return !m_evt_queue.empty(); }
+        bool has_events()
+        {
+            return !m_evt_queue.empty();
+        }
 
-        std::size_t number_of_events() { return m_evt_queue.size(); }
+        std::size_t number_of_events()
+        {
+            return m_evt_queue.size();
+        }
 
-        void wait_for_events() { m_wakeable.wait_for_signal(); }
+        void wait_for_events()
+        {
+            m_wakeable.wait_for_signal();
+        }
 
-        void wait_for_events(const std::chrono::duration<int, std::micro>& timeout) { m_wakeable.wait_for_signal(timeout); }
+        void wait_for_events(const std::chrono::duration<int, std::micro>& timeout)
+        {
+            m_wakeable.wait_for_signal(timeout);
+        }
 
     private:
         sync_object m_wakeable;
@@ -118,4 +144,4 @@ namespace tools
 
 }
 
-#endif //  __ASYNC_OBSERVER_HPP__
+#endif //  ASYNC_OBSERVER_HPP_

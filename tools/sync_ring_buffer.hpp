@@ -1,3 +1,16 @@
+/**
+ * @file sync_ring_buffer.hpp
+ * @brief A thread-safe ring buffer implementation.
+ *
+ * This file contains the definition of a thread-safe ring buffer class template.
+ * The ring buffer provides basic operations such as push, pop, front, front_pop,
+ * back, and size, and ensures thread safety using a mutex.
+ *
+ * @author Laurent Lardinois
+ *
+ * @date January 2025
+ */
+
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,8 +38,8 @@
 
 #pragma once
 
-#if !defined(__SYNC_RING_BUFFER_HPP__)
-#define __SYNC_RING_BUFFER_HPP__
+#if !defined(SYNC_RING_BUFFER_HPP_)
+#define SYNC_RING_BUFFER_HPP_
 
 #include <cstddef>
 #include <mutex>
@@ -38,8 +51,18 @@
 
 namespace tools
 {
+    /**
+     * @brief A thread-safe ring buffer implementation.
+     *
+     * This class provides a thread-safe ring buffer with a fixed capacity.
+     * It supports basic operations such as push, pop, front, front_pop, back, and size,
+     * and ensures thread safety using a mutex.
+     *
+     * @tparam T The type of elements stored in the ring buffer.
+     * @tparam Capacity The maximum number of elements the ring buffer can hold.
+     */
     template <typename T, std::size_t Capacity>
-    class sync_ring_buffer : public non_copyable
+    class sync_ring_buffer : public non_copyable // NOLINT inherits from non copyable/non movable
     {
     public:
         sync_ring_buffer() = default;
@@ -78,7 +101,7 @@ namespace tools
             return item;
         }
 
-        std::optional<T> front()
+        std::optional<T> front() const
         {
             std::optional<T> item;
             std::lock_guard guard(m_mutex);
@@ -89,7 +112,7 @@ namespace tools
             return item;
         }
 
-        std::optional<T> back()
+        std::optional<T> back() const
         {
             std::optional<T> item;
             std::lock_guard guard(m_mutex);
@@ -100,25 +123,28 @@ namespace tools
             return item;
         }
 
-        bool empty()
+        [[nodiscard]] bool empty() const
         {
             std::lock_guard guard(m_mutex);
             return m_ring_buffer.empty();
         }
 
-        bool full()
+        [[nodiscard]] bool full() const
         {
             std::lock_guard guard(m_mutex);
             return m_ring_buffer.full();
         }
 
-        std::size_t size()
+        [[nodiscard]] std::size_t size() const
         {
             std::lock_guard guard(m_mutex);
             return m_ring_buffer.size();
         }
 
-        constexpr std::size_t capacity() const { return m_ring_buffer.capacity(); }
+        [[nodiscard]] constexpr std::size_t capacity() const
+        {
+            return m_ring_buffer.capacity();
+        }
 
     private:
         ring_buffer<T, Capacity> m_ring_buffer;
@@ -126,4 +152,4 @@ namespace tools
     };
 }
 
-#endif //  __SYNC_RING_BUFFER_HPP__
+#endif // SYNC_RING_BUFFER_HPP_

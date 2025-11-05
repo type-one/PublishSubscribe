@@ -1,3 +1,15 @@
+/**
+ * @file non_copyable.hpp
+ * @brief Defines a non-copyable and non-movable class.
+ *
+ * This header file contains the definition of the `non_copyable` class, which
+ * prevents copying and moving of its instances. This is useful for classes
+ * that manage resources that should not be duplicated or transferred.
+ *
+ * @author Laurent Lardinois
+ * @date January 2025
+ */
+
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,8 +37,8 @@
 
 #pragma once
 
-#if !defined(__NON_COPYABLE_HPP__)
-#define __NON_COPYABLE_HPP__
+#if !defined(NON_COPYABLE_HPP_)
+#define NON_COPYABLE_HPP_
 
 namespace tools
 {
@@ -37,10 +49,10 @@ namespace tools
         ~non_copyable() = default;
 
         non_copyable(const non_copyable&) = delete;
-        non_copyable(non_copyable&&) = delete;
-        non_copyable& operator=(const non_copyable&&) = delete;
-        non_copyable& operator=(non_copyable&&) = delete;
+        non_copyable(non_copyable&&) noexcept = delete;
+        non_copyable& operator=(const non_copyable&) = delete;
+        non_copyable& operator=(non_copyable&&) noexcept = delete;
     };
 }
 
-#endif //  __NON_COPYABLE_HPP__
+#endif //  NON_COPYABLE_HPP_

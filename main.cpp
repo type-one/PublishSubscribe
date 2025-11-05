@@ -129,12 +129,14 @@ class my_observer : public base_observer
 {
 public:
     my_observer() = default;
-    virtual ~my_observer() { }
+    virtual ~my_observer()
+    {
+    }
 
     virtual void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
-        std::cout << "sync [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event (" << event
-                  << ") from " << origin << std::endl;
+        std::cout << "sync [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event ("
+                  << event << ") from " << origin << std::endl;
     }
 
 private:
@@ -157,8 +159,8 @@ public:
 
     virtual void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
-        std::cout << "async/push [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event (" << event
-                  << ") from " << origin << std::endl;
+        std::cout << "async/push [topic " << static_cast<std::underlying_type<my_topic>::type>(topic)
+                  << "] received: event (" << event << ") from " << origin << std::endl;
 
         base_async_observer::inform(topic, event, origin);
     }
@@ -179,8 +181,8 @@ private:
                 {
                     auto& [topic, event, origin] = *entry;
 
-                    std::cout << "async/pop [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event ("
-                              << event << ") from " << origin << std::endl;
+                    std::cout << "async/pop [topic " << static_cast<std::underlying_type<my_topic>::type>(topic)
+                              << "] received: event (" << event << ") from " << origin << std::endl;
                 }
             }
         }
@@ -200,7 +202,9 @@ public:
     {
     }
 
-    virtual ~my_subject() { }
+    virtual ~my_subject()
+    {
+    }
 
     virtual void publish(const my_topic& topic, const std::string& event) override
     {
@@ -233,8 +237,8 @@ void test_publish_subscribe()
     subject1->subscribe(my_topic::generic, "loose_coupled_handler_1",
         [](const my_topic& topic, const std::string& event, const std::string& origin)
         {
-            std::cout << "handler [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event (" << event
-                      << ") from " << origin << std::endl;
+            std::cout << "handler [topic " << static_cast<std::underlying_type<my_topic>::type>(topic)
+                      << "] received: event (" << event << ") from " << origin << std::endl;
         });
 
     subject1->publish(my_topic::generic, "toto");
@@ -293,7 +297,8 @@ void test_periodic_task()
 
         if (measured_timepoint.has_value())
         {
-            const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(*measured_timepoint - previous_timepoint);
+            const auto elapsed
+                = std::chrono::duration_cast<std::chrono::microseconds>(*measured_timepoint - previous_timepoint);
             std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
             previous_timepoint = *measured_timepoint;
         }
@@ -306,7 +311,9 @@ class my_collector : public base_observer
 {
 public:
     my_collector() = default;
-    virtual ~my_collector() { }
+    virtual ~my_collector()
+    {
+    }
 
     virtual void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
@@ -318,14 +325,18 @@ public:
 
     void display_stats()
     {
-        auto top = m_histogram.top();
-        std::cout << std::endl << "value " << top << " appears " << m_histogram.top_occurence() << " times" << std::endl;
-        auto avg = m_histogram.average();
+        const auto top = m_histogram.top();
+        std::cout << std::endl
+                  << "value " << top << " appears " << m_histogram.top_occurence() << " times" << std::endl;
+        const auto avg = m_histogram.average();
         std::cout << "average value is " << avg << std::endl;
         std::cout << "median value is " << m_histogram.median() << std::endl;
-        auto variance = m_histogram.variance(avg);
+        const auto variance = m_histogram.variance(avg);
         std::cout << "variance is " << variance << std::endl;
-        std::cout << "gaussian probability of " << top << " occuring is " << m_histogram.gaussian_probability(top, avg, variance)
+        const auto std_deviation = m_histogram.standard_deviation(variance);
+        std::cout << "standard deviation is " << std_deviation << std::endl;
+        std::cout << "gaussian probability of [" << std::floor(top) << "," << std::ceil(top) << "] occuring is "
+                  << m_histogram.gaussian_probability(std::floor(top), std::ceil(top), avg, std_deviation, 100)
                   << std::endl;
     }
 
@@ -342,7 +353,8 @@ void test_periodic_publish_subscribe()
     auto data_source = std::make_shared<my_subject>("data_source");
     auto histogram_feeder = std::make_shared<my_collector>();
 
-    auto sampler = [&data_source](std::shared_ptr<my_periodic_task_context> context, const std::string& task_name) -> void
+    auto sampler
+        = [&data_source](std::shared_ptr<my_periodic_task_context> context, const std::string& task_name) -> void
     {
         (void)task_name;
 
@@ -446,7 +458,8 @@ void test_worker_tasks()
         tasks[idx]->delegate(
             [](auto context, const auto& task_name) -> void
             {
-                std::cout << "job " << context->loop_counter.load() << " on worker task " << task_name.c_str() << std::endl;
+                std::cout << "job " << context->loop_counter.load() << " on worker task " << task_name.c_str()
+                          << std::endl;
                 context->loop_counter++;
                 context->time_points.emplace(std::chrono::high_resolution_clock::now());
             });
@@ -466,7 +479,8 @@ void test_worker_tasks()
 
         if (measured_timepoint.has_value())
         {
-            const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(*measured_timepoint - previous_timepoint);
+            const auto elapsed
+                = std::chrono::duration_cast<std::chrono::microseconds>(*measured_timepoint - previous_timepoint);
             std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
             previous_timepoint = *measured_timepoint;
         }

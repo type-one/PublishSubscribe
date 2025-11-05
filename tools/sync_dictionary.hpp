@@ -1,3 +1,15 @@
+/**
+ * @file sync_dictionary.hpp
+ * @brief A thread-safe dictionary class.
+ *
+ * This file contains the definition of the sync_dictionary class, which provides
+ * a thread-safe dictionary implementation using a mutex to protect access to the
+ * internal dictionary. It supports adding, removing, and retrieving key-value pairs,
+ * as well as checking the size and emptiness of the dictionary.
+ *
+ * @author Laurent Lardinois
+ * @date January 2025
+ */
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,8 +37,8 @@
 
 #pragma once
 
-#if !defined(__SYNC_DICTIONARY_HPP__)
-#define __SYNC_DICTIONARY_HPP__
+#if !defined(SYNC_DICTIONARY_HPP_)
+#define SYNC_DICTIONARY_HPP_
 
 #include <cstddef>
 #include <map>
@@ -38,8 +50,19 @@
 
 namespace tools
 {
+    /**
+     * @brief A thread-safe dictionary class.
+     *
+     * This class provides a thread-safe dictionary implementation using a mutex
+     * to protect access to the internal dictionary. It supports adding, removing,
+     * and retrieving key-value pairs, as well as checking the size and emptiness
+     * of the dictionary.
+     *
+     * @tparam K The type of the keys in the dictionary.
+     * @tparam T The type of the values in the dictionary.
+     */
     template <typename K, typename T>
-    class sync_dictionary : public non_copyable
+    class sync_dictionary : public non_copyable // NOLINT inherits from non copyable/non movable
     {
     public:
         sync_dictionary() = default;
@@ -75,7 +98,7 @@ namespace tools
             }
         }
 
-        std::map<K, T> get_collection()
+        std::map<K, T> get_collection() const
         {
             std::lock_guard guard(m_mutex);
             auto snapshot = m_dictionary;
@@ -86,21 +109,21 @@ namespace tools
         {
             std::optional<T> result;
             std::lock_guard guard(m_mutex);
-            const auto& it = m_dictionary.find(key);
-            if (m_dictionary.cend() != it)
+            const auto& itk = m_dictionary.find(key);
+            if (m_dictionary.cend() != itk)
             {
-                result = it->second;
+                result = itk->second;
             }
             return result;
         }
 
-        bool empty()
+        bool empty() const
         {
             std::lock_guard guard(m_mutex);
             return m_dictionary.empty();
         }
 
-        std::size_t size()
+        std::size_t size() const
         {
             std::lock_guard guard(m_mutex);
             return m_dictionary.size();
@@ -114,8 +137,8 @@ namespace tools
 
     private:
         std::map<K, T> m_dictionary;
-        std::mutex m_mutex;
+        mutable std::mutex m_mutex;
     };
 }
 
-#endif //  __SYNC_DICTIONARY_HPP__
+#endif //  SYNC_DICTIONARY_HPP_

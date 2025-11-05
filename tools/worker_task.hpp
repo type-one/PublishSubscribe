@@ -1,3 +1,14 @@
+/**
+ * @file worker_task.hpp
+ * @brief A worker task class template.
+ *
+ * This file contains the implementation of the worker_task class template, which
+ * provides functionality to delegate tasks and manage their execution.
+ *
+ * @author Laurent Lardinois
+ * @date January 2025
+ */
+
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,8 +36,8 @@
 
 #pragma once
 
-#if !defined(__WORKER_TASK_HPP__)
-#define __WORKER_TASK_HPP__
+#if !defined(WORKER_TASK_HPP_)
+#define WORKER_TASK_HPP_
 
 #include <atomic>
 #include <chrono>
@@ -45,8 +56,16 @@
 
 namespace tools
 {
+    /**
+     * @brief A worker task class template.
+     *
+     * This class represents a worker task.
+     * It provides functionality to delegate tasks and manage their execution.
+     *
+     * @tparam Context The type of the context object.
+     */
     template <typename Context>
-    class worker_task : public non_copyable
+    class worker_task : public non_copyable // NOLINT inherits from non copyable/non movable
     {
 
     public:
@@ -55,17 +74,17 @@ namespace tools
         using call_back = std::function<void(std::shared_ptr<Context>, const std::string& task_name)>;
 
         worker_task(std::shared_ptr<Context> context, const std::string& task_name)
-            : m_context(context)
-            , m_task_name(task_name)
-        {
-            m_task = std::make_unique<std::thread>(
-                [this]()
-                {
+            : m_context { context }
+            , m_task_name { task_name }
+            , m_task { std::make_unique<std::thread>(
+                  [this]()
+                  {
 #if defined(__linux__)
-                    pthread_setname_np(pthread_self(), m_task_name.c_str());
+                      pthread_setname_np(pthread_self(), m_task_name.c_str());
 #endif
-                    run_loop();
-                });
+                      run_loop();
+                  }) }
+        {
         }
 
         ~worker_task()
@@ -76,7 +95,10 @@ namespace tools
         }
 
         // note: native handle allows specific OS calls like setting scheduling policy or setting priority
-        void* native_handle() const { return reinterpret_cast<void*>(m_task->native_handle()); }
+        [[nodiscard]] void* native_handle() const
+        {
+            return reinterpret_cast<void*>(m_task->native_handle());
+        }
 
         void delegate(call_back&& work)
         {
@@ -103,13 +125,13 @@ namespace tools
         }
 
         call_back m_startup_routine;
-        tools::sync_object m_work_sync;
-        tools::sync_queue<call_back> m_work_queue;
+        tools::sync_object m_work_sync = {};
+        tools::sync_queue<call_back> m_work_queue = {};
         std::shared_ptr<Context> m_context;
         std::string m_task_name;
         std::atomic_bool m_stop_task = false;
-        std::unique_ptr<std::thread> m_task;
+        std::unique_ptr<std::thread> m_task = {};
     };
 }
 
-#endif //  __WORKER_TASK_HPP__
+#endif //  WORKER_TASK_HPP_

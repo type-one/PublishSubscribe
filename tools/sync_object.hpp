@@ -1,3 +1,15 @@
+/**
+ * @file sync_object.hpp
+ * @brief Synchronization object using standard C++ constructs.
+ *
+ * This file contains the definition of the sync_object class, which provides
+ * a synchronization mechanism using standard C++ constructs such as mutexes and
+ * condition variables.
+ *
+ * @author Laurent Lardinois
+ * @date January 2025
+ */
+
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
 // (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
@@ -25,8 +37,8 @@
 
 #pragma once
 
-#if !defined(__SYNC_OBJECT_HPP__)
-#define __SYNC_OBJECT_HPP__
+#if !defined(SYNC_OBJECT_HPP_)
+#define SYNC_OBJECT_HPP_
 
 #include <atomic>
 #include <chrono>
@@ -37,10 +49,12 @@
 
 namespace tools
 {
-    class sync_object : public non_copyable
+    class sync_object : public non_copyable // NOLINT inherits from non copyable/non movable class
     {
     public:
-        sync_object(bool initial_state = false);
+        sync_object(bool initial_state);
+        sync_object()
+            : sync_object(false) {};
         ~sync_object();
 
         void signal();
@@ -55,4 +69,4 @@ namespace tools
     };
 }
 
-#endif //  __SYNC_OBJECT_HPP__
+#endif //  SYNC_OBJECT_HPP_
