@@ -206,7 +206,7 @@ public:
     {
     }
 
-    virtual void publish(const my_topic& topic, const std::string& event) override
+    virtual void publish(const my_topic& topic, const std::string& event) const override
     {
         std::cout << "publish: event (" << event << ") to " << name() << std::endl;
         base_subject::publish(topic, event);

@@ -43,7 +43,7 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <utility>
 
@@ -92,19 +92,19 @@ namespace tools
 
         void subscribe(const Topic& topic, sync_observer_shared_ptr observer)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             m_subscribers.insert({ topic, observer });
         }
 
         void subscribe(const Topic& topic, const std::string& handler_name, handler handler)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             m_handlers.insert({ topic, std::make_pair(handler_name, handler) });
         }
 
         void unsubscribe(const Topic& topic, sync_observer_shared_ptr observer)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
 
             for (auto [it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
             {
@@ -118,7 +118,7 @@ namespace tools
 
         void unsubscribe(const Topic& topic, const std::string& handler_name)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
 
             for (auto [it, range_end] = m_handlers.equal_range(topic); it != range_end; ++it)
             {
@@ -130,13 +130,13 @@ namespace tools
             }
         }
 
-        virtual void publish(const Topic& topic, const Evt& event)
+        virtual void publish(const Topic& topic, const Evt& event) const
         {
             std::vector<sync_observer_shared_ptr> to_inform;
             std::vector<handler> to_invoke;
 
             {
-                std::lock_guard guard(m_mutex);
+                std::shared_lock guard(m_mutex);
 
                 for (auto [it, range_end] = m_subscribers.equal_range(topic); it != range_end; ++it)
                 {
@@ -161,7 +161,7 @@ namespace tools
         }
 
     private:
-        std::mutex m_mutex;
+        mutable std::shared_mutex m_mutex;
         std::multimap<Topic, sync_observer_shared_ptr> m_subscribers = {};
         std::multimap<Topic, std::pair<std::string, handler>> m_handlers = {};
         std::string m_name;

@@ -117,12 +117,12 @@ namespace tools
             return entry;
         }
 
-        bool has_events()
+        [[nodiscard]] bool has_events() const
         {
             return !m_evt_queue.empty();
         }
 
-        std::size_t number_of_events()
+        [[nodiscard]]std::size_t number_of_events() const
         {
             return m_evt_queue.size();
         }
