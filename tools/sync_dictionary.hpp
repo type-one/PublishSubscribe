@@ -42,7 +42,7 @@
 
 #include <cstddef>
 #include <map>
-#include <mutex>
+#include <shared_mutex>
 #include <optional>
 #include <unordered_map>
 
@@ -70,28 +70,28 @@ namespace tools
 
         void add(const K& key, const T& value)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             m_dictionary[key] = value;
         }
 
         void remove(const K& key)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             m_dictionary.erase(key);
         }
 
-        void add_collection(const std::map<K, T> collection)
+        void add_collection(const std::map<K, T>& collection)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             for (const auto& [key, value] : collection)
             {
                 m_dictionary[key] = value;
             }
         }
 
-        void add_collection(const std::unordered_map<K, T> collection)
+        void add_collection(const std::unordered_map<K, T>& collection)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             for (const auto& [key, value] : collection)
             {
                 m_dictionary[key] = value;
@@ -100,15 +100,15 @@ namespace tools
 
         std::map<K, T> get_collection() const
         {
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             auto snapshot = m_dictionary;
             return snapshot;
         }
 
-        std::optional<T> find(const K& key)
+        std::optional<T> find(const K& key) const
         {
             std::optional<T> result;
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             const auto& itk = m_dictionary.find(key);
             if (m_dictionary.cend() != itk)
             {
@@ -119,25 +119,25 @@ namespace tools
 
         bool empty() const
         {
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             return m_dictionary.empty();
         }
 
         std::size_t size() const
         {
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             return m_dictionary.size();
         }
 
         void clear()
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             m_dictionary.clear();
         }
 
     private:
         std::map<K, T> m_dictionary;
-        mutable std::mutex m_mutex;
+        mutable std::shared_mutex m_mutex;
     };
 }
 
