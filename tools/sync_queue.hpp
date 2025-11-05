@@ -39,9 +39,9 @@
 #if !defined(SYNC_QUEUE_HPP_)
 #define SYNC_QUEUE_HPP_
 
-#include <mutex>
 #include <optional>
 #include <queue>
+#include <shared_mutex>
 #include <utility>
 
 #include "tools/non_copyable.hpp"
@@ -65,19 +65,19 @@ namespace tools
 
         void push(const T& elem)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             m_queue.push(elem);
         }
 
         void emplace(T&& elem)
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             m_queue.emplace(std::move(elem));
         }
 
         void pop()
         {
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             if (!m_queue.empty())
             {
                 m_queue.pop();
@@ -87,7 +87,7 @@ namespace tools
         std::optional<T> front_pop()
         {
             std::optional<T> item;
-            std::lock_guard guard(m_mutex);
+            std::unique_lock guard(m_mutex);
             if (!m_queue.empty())
             {
                 item = m_queue.front();
@@ -99,7 +99,7 @@ namespace tools
         std::optional<T> front() const
         {
             std::optional<T> item;
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             if (!m_queue.empty())
             {
                 item = m_queue.front();
@@ -110,7 +110,7 @@ namespace tools
         std::optional<T> back() const
         {
             std::optional<T> item;
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             if (!m_queue.empty())
             {
                 item = m_queue.back();
@@ -120,19 +120,19 @@ namespace tools
 
         bool empty() const
         {
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             return m_queue.empty();
         }
 
         std::size_t size() const
         {
-            std::lock_guard guard(m_mutex);
+            std::shared_lock guard(m_mutex);
             return m_queue.size();
         }
 
     private:
         std::queue<T> m_queue;
-        mutable std::mutex m_mutex;
+        mutable std::shared_mutex m_mutex;
     };
 }
 

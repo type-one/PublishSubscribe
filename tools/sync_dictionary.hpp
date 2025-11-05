@@ -42,8 +42,8 @@
 
 #include <cstddef>
 #include <map>
-#include <shared_mutex>
 #include <optional>
+#include <shared_mutex>
 #include <unordered_map>
 
 #include "tools/non_copyable.hpp"
