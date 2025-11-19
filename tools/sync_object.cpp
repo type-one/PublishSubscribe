@@ -31,20 +31,9 @@
 
 namespace tools
 {
-    sync_object::sync_object(bool initial_state)
-        : m_signaled(initial_state)
-        , m_stop(false)
-    {
-    }
-
     sync_object::~sync_object()
     {
-        {
-            std::lock_guard<std::mutex> guard(m_mutex);
-            m_signaled = true;
-            m_stop = true;
-        }
-        m_cond.notify_all();
+        signal_all();
     }
 
     void sync_object::signal()
@@ -56,17 +45,26 @@ namespace tools
         m_cond.notify_one();
     }
 
+    void sync_object::signal_all()
+    {
+        {
+            std::lock_guard<std::mutex> guard(m_mutex);
+            m_signaled = true;
+        }
+        m_cond.notify_all();
+    }
+
     void sync_object::wait_for_signal()
     {
         std::unique_lock<std::mutex> lock(m_mutex);
+        m_signaled = false;
         m_cond.wait(lock, [&]() { return m_signaled; });
-        m_signaled = m_stop;
     }
 
     void sync_object::wait_for_signal(const std::chrono::duration<int, std::micro>& timeout)
     {
         std::unique_lock<std::mutex> lock(m_mutex);
+        m_signaled = false;
         m_cond.wait_for(lock, timeout, [&]() { return m_signaled; });
-        m_signaled = m_stop;
     }
 }

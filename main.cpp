@@ -197,7 +197,7 @@ class my_subject : public base_subject
 {
 public:
     my_subject() = delete;
-    my_subject(const std::string name)
+    my_subject(const std::string& name)
         : base_subject(name)
     {
     }

@@ -52,18 +52,16 @@ namespace tools
     class sync_object : public non_copyable // NOLINT inherits from non copyable/non movable class
     {
     public:
-        sync_object(bool initial_state);
-        sync_object()
-            : sync_object(false) {};
+        sync_object() = default;
         ~sync_object();
 
         void signal();
+        void signal_all();
         void wait_for_signal();
         void wait_for_signal(const std::chrono::duration<int, std::micro>& timeout);
 
     private:
-        bool m_signaled;
-        bool m_stop;
+        bool m_signaled = false;
         std::mutex m_mutex;
         std::condition_variable m_cond;
     };
