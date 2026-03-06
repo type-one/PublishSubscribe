@@ -39,6 +39,28 @@ adapted for other platforms (micro-computers, micro-controllers)
 On Linux, just use `cmake . -B build` then go to build directory and run make (or ninja)
 On Windows, just use `cmake-gui` to generate a Visual Studio solution
 
+## Memory usage
+
+With valgrind on Linux you can profile the memory usage (with or without custom allocator enabled) by using valgrind:
+
+```bash
+valgrind --tool=massif ./publish_subscribe
+
+massif-visualizer ./massif.out.xxxxxx
+```
+
+The purpose of the custom allocator is to pre-allocate tiny blocks and reuse them over the time to prevent memory fragmentation
+and to minimize the need to allocate new blocks from the heap.
+
+Indeed heavy and high frequency usage of dynamic heap allocation for events/messages can cause memory fragmentation, in particular
+on platforms with a limited amount of memory available. 
+
+More info on:
+
+[Valgrind and Massiv](https://gist.github.com/felipeek/f9e4392cfe9a9e65dc52048e91ac58ea)
+[Valgrind manual](https://valgrind.org/docs/manual/ms-manual.html)
+[About custom allocators](https://www.rastergrid.com/blog/sw-eng/2021/03/custom-memory-allocators/)
+
 ## Author
 
 Laurent Lardinois / Type One (TFL-TDV)
