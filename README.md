@@ -41,7 +41,7 @@ On Windows, just use `cmake-gui` to generate a Visual Studio solution
 
 ## Memory usage
 
-With valgrind on Linux you can profile the memory usage (with or without custom allocator enabled) by using valgrind:
+On Linux you can profile the memory usage (with or without custom allocator enabled) by using valgrind:
 
 ```bash
 valgrind --tool=massif ./publish_subscribe
