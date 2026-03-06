@@ -488,12 +488,130 @@ void test_worker_tasks()
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
+namespace
+{
+    constexpr size_t ALLOC_MAX_SIZE = 512;
+    constexpr size_t ALLOC_ITERATIONS = 10000000;
 
+    enum class alloc_type
+    {
+        new_object,
+        new_array
+    };
+
+    struct allocation
+    {
+        void* ptr;
+        alloc_type type;
+    };
+
+    void alloc_dealloc_worker(int id)
+    {
+        std::cout << "-- worker " << id << '\n';
+
+        std::mt19937 rng(std::random_device {}());
+        std::uniform_int_distribution<size_t> size_dist(0, ALLOC_MAX_SIZE);
+        std::uniform_int_distribution<int> op_dist(0, 3); // 0=new, 1=new[], 2=delete, 3=delete[]
+
+        std::vector<allocation> allocated;
+        allocated.reserve(10000);
+
+        for (std::size_t i = 0; i < ALLOC_ITERATIONS; ++i)
+        {
+            int oper = op_dist(rng);
+
+            if (oper == 0)
+            {
+                // new (single object)
+                std::size_t ssz = size_dist(rng);
+                char* ptr = new char[ssz]; // treat as object
+                allocated.push_back({ ptr, alloc_type::new_object });
+            }
+            else if (oper == 1)
+            {
+                // new[] (array)
+                std::size_t ssz = size_dist(rng);
+                char* ptr = new char[ssz];
+                allocated.push_back({ ptr, alloc_type::new_array });
+            }
+            else if (!allocated.empty())
+            {
+                // delete or delete[]
+                std::size_t idx = rng() % allocated.size();
+                allocation alloc = allocated[idx];
+
+                if (oper == 2 && alloc.type == alloc_type::new_object)
+                {
+                    delete static_cast<char*>(alloc.ptr);
+                }
+                else if (oper == 3 && alloc.type == alloc_type::new_array)
+                {
+                    delete[] static_cast<char*>(alloc.ptr);
+                }
+                else
+                {
+                    // wrong operator chosen → fallback to correct one
+                    if (alloc.type == alloc_type::new_object)
+                    {
+                        delete static_cast<char*>(alloc.ptr);
+                    }
+                    else
+                    {
+                        delete[] static_cast<char*>(alloc.ptr);
+                    }
+                }
+
+                allocated[idx] = allocated.back();
+
+                allocated.pop_back();
+            }
+        } // cleanup
+
+        for (auto& alloc : allocated)
+        {
+            if (alloc.type == alloc_type::new_object)
+            {
+                delete static_cast<char*>(alloc.ptr);
+            }
+            else
+            {
+                delete[] static_cast<char*>(alloc.ptr);
+            }
+        }
+    }
+}
+
+void test_allocator_stress()
+{
+    std::cout << "-- allocator stress --\n";
+
+    const auto start = std::chrono::high_resolution_clock::now();
+    std::thread thr1(alloc_dealloc_worker, 1);
+    std::thread thr2(alloc_dealloc_worker, 2);
+    thr1.join();
+    thr2.join();
+    const auto end = std::chrono::high_resolution_clock::now();
+    const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "allocation/deallocation total time: " << millis << " ms\n";
+}
+//--------------------------------------------------------------------------------------------------------------------------------
+
+#if defined(USE_MEM_POOL_ALLOCATOR)
+// https://www.rastergrid.com/blog/sw-eng/2021/03/custom-memory-allocators/
+extern void init_mem_pool_allocator();
+extern void destroy_mem_pool_allocator();
+#endif
 
 int main(int argc, char* argv[])
 {
     (void)argc;
     (void)argv;
+
+#if defined(USE_MEM_POOL_ALLOCATOR)
+    // prevent memory fragmentation with frequent heap allocations of
+    // small events/messages
+    init_mem_pool_allocator();
+#endif
 
     test_ring_buffer();
     test_sync_ring_buffer();
@@ -507,6 +625,12 @@ int main(int argc, char* argv[])
     test_queued_commands();
     test_ring_buffer_commands();
     test_worker_tasks();
+
+    test_allocator_stress();
+
+#if defined(USE_MEM_POOL_ALLOCATOR)
+    destroy_mem_pool_allocator();
+#endif
 
     return 0;
 }

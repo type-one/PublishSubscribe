@@ -16,12 +16,14 @@ Goodies:
 - simple worker task helper
 - simple thread-safe ring buffer on top of std::array
 - queuable commands
+- lock-free ring-buffer
+- C++20 only: custom pool allocator for global new/new[]/delete/delete[]
 
 [GitHub repository](https://github.com/type-one/PublishSubscribe)
 
 ## What
 
-Small test program written in C++17 to implement a simple Publish/Subscribe pattern. 
+Small test program written in C++17 to implement a simple Publish/Subscribe pattern.
 The code is portable and lightweight.
 
 ## Why
