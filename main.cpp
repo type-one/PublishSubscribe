@@ -490,8 +490,8 @@ void test_worker_tasks()
 //--------------------------------------------------------------------------------------------------------------------------------
 namespace
 {
-    constexpr size_t ALLOC_MAX_SIZE = 512;
-    constexpr size_t ALLOC_ITERATIONS = 10000000;
+    constexpr std::size_t ALLOC_MAX_SIZE = 512;
+    constexpr std::size_t ALLOC_ITERATIONS = 10000000;
 
     enum class alloc_type
     {
@@ -510,7 +510,7 @@ namespace
         std::cout << "-- worker " << id << '\n';
 
         std::mt19937 rng(std::random_device {}());
-        std::uniform_int_distribution<size_t> size_dist(0, ALLOC_MAX_SIZE);
+        std::uniform_int_distribution<std::size_t> size_dist(1, ALLOC_MAX_SIZE);
         std::uniform_int_distribution<int> op_dist(0, 3); // 0=new, 1=new[], 2=delete, 3=delete[]
 
         std::vector<allocation> allocated;
