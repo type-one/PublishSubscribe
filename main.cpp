@@ -84,6 +84,15 @@ void test_ring_buffer()
     const auto inserted_pair = str_queue.push_range(batch.begin(), batch.end());
     std::cout << "inserted with iterator-pair: " << inserted_pair << std::endl;
 
+    // pop_range (C++17): iterator-pair batch extraction
+    std::array<std::string, 2> popped_pair {};
+    const auto popped_pair_count = str_queue.pop_range(popped_pair.begin(), popped_pair.end());
+    std::cout << "popped with iterator-pair: " << popped_pair_count << std::endl;
+    for (std::size_t i = 0; i < popped_pair_count; ++i)
+    {
+        std::cout << "  " << popped_pair[i] << std::endl;
+    }
+
     std::cout << "drain iterator-pair batch:" << std::endl;
     while (!str_queue.empty())
     {
@@ -111,6 +120,15 @@ void test_ring_buffer()
     std::vector<std::string> range_batch = { "one", "two", "three" };
     const auto inserted_range = str_queue.push_range(range_batch);
     std::cout << "inserted with C++20 range: " << inserted_range << std::endl;
+
+    // pop_range (C++20): span-based batch extraction
+    std::array<std::string, 4> popped_span {};
+    const auto popped_span_count = str_queue.pop_range(std::span<std::string>(popped_span));
+    std::cout << "popped with C++20 span: " << popped_span_count << std::endl;
+    for (std::size_t i = 0; i < popped_span_count; ++i)
+    {
+        std::cout << "  " << popped_span[i] << std::endl;
+    }
 
     std::cout << "drain C++20 container range:" << std::endl;
     while (!str_queue.empty())
@@ -200,6 +218,15 @@ void test_sync_ring_buffer()
     const auto inserted_pair = str_queue.push_range(batch.begin(), batch.end());
     std::cout << "inserted with iterator-pair: " << inserted_pair << std::endl;
 
+    // pop_range (C++17): iterator-pair extraction under one lock
+    std::array<std::string, 2> popped_pair {};
+    const auto popped_pair_count = str_queue.pop_range(popped_pair.begin(), popped_pair.end());
+    std::cout << "popped with iterator-pair: " << popped_pair_count << std::endl;
+    for (std::size_t i = 0; i < popped_pair_count; ++i)
+    {
+        std::cout << "  " << popped_pair[i] << std::endl;
+    }
+
     std::cout << "drain iterator-pair sync batch:" << std::endl;
     while (!str_queue.empty())
     {
@@ -233,6 +260,15 @@ void test_sync_ring_buffer()
     std::vector<std::string> range_batch = { "one", "two", "three" };
     const auto inserted_range = str_queue.push_range(range_batch);
     std::cout << "inserted with C++20 range: " << inserted_range << std::endl;
+
+    // pop_range (C++20): span-based extraction under one lock
+    std::array<std::string, 4> popped_span {};
+    const auto popped_span_count = str_queue.pop_range(std::span<std::string>(popped_span));
+    std::cout << "popped with C++20 span: " << popped_span_count << std::endl;
+    for (std::size_t i = 0; i < popped_span_count; ++i)
+    {
+        std::cout << "  " << popped_span[i] << std::endl;
+    }
 
     std::cout << "drain C++20 container sync range:" << std::endl;
     while (!str_queue.empty())

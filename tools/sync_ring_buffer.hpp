@@ -50,6 +50,7 @@
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
 #include <ranges>
+#include <span>
 #endif
 
 #include "tools/non_copyable.hpp"
@@ -134,6 +135,23 @@ namespace tools
                 m_ring_buffer.pop();
             }
         }
+
+        // C++17: iterator-pair batch pop under one lock
+        template <typename OutputIt>
+        std::size_t pop_range(OutputIt first, OutputIt last)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.pop_range(first, last);
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: span-based batch pop under one lock
+        std::size_t pop_range(std::span<T> out)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.pop_range(out);
+        }
+#endif
 
         std::optional<T> front_pop()
         {

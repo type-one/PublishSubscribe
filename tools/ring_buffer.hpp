@@ -48,6 +48,7 @@
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
 #include <ranges>
+#include <span>
 #endif
 
 namespace tools
@@ -193,6 +194,42 @@ namespace tools
             m_pop_index = next_index(m_pop_index);
             --m_size;
         }
+
+        // C++17: iterator-pair batch pop that stops when the ring buffer is empty
+        template <typename OutputIt>
+        std::size_t pop_range(OutputIt first, OutputIt last)
+        {
+            std::size_t popped = 0U;
+            for (; (first != last) && !empty(); ++first)
+            {
+                *first = std::move(m_ring_buffer[m_pop_index]);
+                m_pop_index = next_index(m_pop_index);
+                --m_size;
+                ++popped;
+            }
+            return popped;
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: span-based batch pop into contiguous storage
+        std::size_t pop_range(std::span<T> out)
+        {
+            std::size_t popped = 0U;
+            for (auto& elem : out)
+            {
+                if (empty())
+                {
+                    break;
+                }
+
+                elem = std::move(m_ring_buffer[m_pop_index]);
+                m_pop_index = next_index(m_pop_index);
+                --m_size;
+                ++popped;
+            }
+            return popped;
+        }
+#endif
 
         T front() const
         {
