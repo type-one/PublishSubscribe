@@ -73,29 +73,6 @@ namespace tools
             m_wakeable.signal();
         }
 
-        // Perfect forwarding path for producers that can pass temporaries/movables directly.
-#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
-        // C++20: requires clause constrains forwarded arguments to tuple-constructible ones.
-        template <typename TopicArg, typename EvtArg, typename OriginArg>
-            requires std::is_constructible_v<Topic, TopicArg&&> && std::is_constructible_v<Evt, EvtArg&&>
-            && std::is_constructible_v<std::string, OriginArg&&>
-        void enqueue_event(TopicArg&& topic, EvtArg&& event, OriginArg&& origin)
-        {
-            m_evt_queue.emplace(
-                std::forward<TopicArg>(topic), std::forward<EvtArg>(event), std::forward<OriginArg>(origin));
-        }
-#else
-        // C++17: std::enable_if_t provides equivalent SFINAE constraints.
-        template <typename TopicArg, typename EvtArg, typename OriginArg,
-            typename = std::enable_if_t<std::is_constructible_v<Topic, TopicArg&&>
-                && std::is_constructible_v<Evt, EvtArg&&> && std::is_constructible_v<std::string, OriginArg&&>>>
-        void enqueue_event(TopicArg&& topic, EvtArg&& event, OriginArg&& origin)
-        {
-            m_evt_queue.emplace(
-                std::forward<TopicArg>(topic), std::forward<EvtArg>(event), std::forward<OriginArg>(origin));
-        }
-#endif
-
         std::vector<event_entry> pop_all_events()
         {
             std::vector<event_entry> events;
@@ -165,6 +142,29 @@ namespace tools
         }
 
     private:
+        // Internal enqueue helper used by inform() to preserve observer API semantics.
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: requires clause constrains forwarded arguments to tuple-constructible ones.
+        template <typename TopicArg, typename EvtArg, typename OriginArg>
+            requires std::is_constructible_v<Topic, TopicArg&&> && std::is_constructible_v<Evt, EvtArg&&>
+            && std::is_constructible_v<std::string, OriginArg&&>
+        void enqueue_event(TopicArg&& topic, EvtArg&& event, OriginArg&& origin)
+        {
+            m_evt_queue.emplace(
+                std::forward<TopicArg>(topic), std::forward<EvtArg>(event), std::forward<OriginArg>(origin));
+        }
+#else
+        // C++17: std::enable_if_t provides equivalent SFINAE constraints.
+        template <typename TopicArg, typename EvtArg, typename OriginArg,
+            typename = std::enable_if_t<std::is_constructible_v<Topic, TopicArg&&>
+                && std::is_constructible_v<Evt, EvtArg&&> && std::is_constructible_v<std::string, OriginArg&&>>>
+        void enqueue_event(TopicArg&& topic, EvtArg&& event, OriginArg&& origin)
+        {
+            m_evt_queue.emplace(
+                std::forward<TopicArg>(topic), std::forward<EvtArg>(event), std::forward<OriginArg>(origin));
+        }
+#endif
+
         sync_object m_wakeable;
         sync_queue<event_entry> m_evt_queue;
     };
