@@ -108,7 +108,9 @@ namespace tools
         {
             std::unique_lock guard(m_mutex);
             for (; first != last; ++first)
+            {
                 m_queue.emplace(*first); // emplace handles move iterators transparently
+            }
         }
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -119,7 +121,9 @@ namespace tools
         {
             std::unique_lock guard(m_mutex);
             for (auto&& elem : range)
+            {
                 m_queue.push(std::forward<decltype(elem)>(elem));
+            }
         }
 #endif
 
