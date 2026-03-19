@@ -40,10 +40,12 @@
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
 #include <ranges>
+#include <span>
 #endif
 
 #include "tools/async_observer.hpp"
 #include "tools/histogram.hpp"
+#include "tools/lock_free_ring_buffer.hpp"
 #include "tools/periodic_task.hpp"
 #include "tools/ring_buffer.hpp"
 #include "tools/sync_dictionary.hpp"
@@ -128,6 +130,45 @@ void test_ring_buffer()
     {
         std::cout << "  " << str_queue.front() << std::endl;
         str_queue.pop();
+    }
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_lock_free_ring_buffer()
+{
+    std::cout << "-- lock free ring buffer --" << std::endl;
+    tools::lock_free_ring_buffer<int, 4U> queue;
+
+    // push_range (C++17): iterator-pair insertion
+    std::vector<int> input = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    const auto inserted = queue.push_range(input.begin(), input.end());
+    std::cout << "push_range inserted: " << inserted << std::endl;
+
+    // pop_range (C++17): iterator-pair extraction
+    std::array<int, 6> popped_first {};
+    const auto popped_count_first = queue.pop_range(popped_first.begin(), popped_first.end());
+    std::cout << "pop_range iterator-pair popped: " << popped_count_first << std::endl;
+    for (std::size_t i = 0; i < popped_count_first; ++i)
+    {
+        std::cout << "  " << popped_first[i] << std::endl;
+    }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+    // push_range (C++20): range overload with a filtered view
+    std::vector<int> more = { 11, 12, 13, 14, 15, 16, 17, 18 };
+    auto evens = more | std::views::filter([](int value) { return (value % 2) == 0; });
+    const auto inserted_view = queue.push_range(evens);
+    std::cout << "push_range C++20 filtered range inserted: " << inserted_view << std::endl;
+
+    // pop_range (C++20): span overload
+    std::array<int, 8> popped_second {};
+    const auto popped_count_second = queue.pop_range(std::span<int>(popped_second));
+    std::cout << "pop_range C++20 span popped: " << popped_count_second << std::endl;
+    for (std::size_t i = 0; i < popped_count_second; ++i)
+    {
+        std::cout << "  " << popped_second[i] << std::endl;
     }
 #endif
 }
@@ -896,6 +937,7 @@ int main(int argc, char* argv[])
 #endif
 
     test_ring_buffer();
+    test_lock_free_ring_buffer();
     test_sync_ring_buffer();
     test_sync_queue();
     test_sync_dictionary();

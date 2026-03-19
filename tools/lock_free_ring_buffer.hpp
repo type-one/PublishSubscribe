@@ -45,6 +45,11 @@
 #include <cstdint>
 #include <type_traits>
 
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#include <span>
+#endif
+
 #include "tools/non_copyable.hpp"
 
 namespace tools
@@ -60,9 +65,9 @@ namespace tools
      */
     template <typename T, std::size_t Pow2>
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
-    requires std::is_standard_layout_v<T> && std::is_trivial_v<T> &&(std::is_scalar_v<T> || std::is_pointer_v<T>)
+        requires std::is_standard_layout_v<T> && std::is_trivial_v<T> && (std::is_scalar_v<T> || std::is_pointer_v<T>)
 #endif
-        class lock_free_ring_buffer : public non_copyable // NOLINT inherits from non copyable and non movable class
+    class lock_free_ring_buffer : public non_copyable // NOLINT inherits from non copyable and non movable class
     {
     public:
         static_assert(std::is_standard_layout<T>::value, "T has to provide standard layout");
@@ -115,6 +120,43 @@ namespace tools
             return true;
         }
 
+        // C++17: iterator-pair batch push; stops at first full condition and returns inserted count
+        template <typename InputIt>
+        std::size_t push_range(InputIt first, InputIt last)
+        {
+            std::size_t count = 0U;
+            for (; first != last; ++first)
+            {
+                if (!push(static_cast<T>(*first)))
+                {
+                    break;
+                }
+                ++count;
+            }
+
+            return count;
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: range batch push; accepts any input_range and keeps non-blocking semantics
+        template <std::ranges::input_range Range>
+            requires std::is_convertible_v<std::ranges::range_reference_t<Range>, T>
+        std::size_t push_range(Range&& range)
+        {
+            std::size_t count = 0U;
+            for (auto&& value : range)
+            {
+                if (!push(static_cast<T>(value)))
+                {
+                    break;
+                }
+                ++count;
+            }
+
+            return count;
+        }
+#endif
+
         /**
          * @brief Pops an element from the ring buffer.
          *
@@ -151,6 +193,45 @@ namespace tools
 
             return true;
         }
+
+        // C++17: iterator-pair batch pop; stops at first empty condition and returns popped count
+        template <typename OutputIt>
+        std::size_t pop_range(OutputIt first, OutputIt last)
+        {
+            std::size_t count = 0U;
+            for (; first != last; ++first)
+            {
+                T value {};
+                if (!pop(value))
+                {
+                    break;
+                }
+
+                *first = value;
+                ++count;
+            }
+
+            return count;
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: span-based batch pop into a contiguous output buffer
+        std::size_t pop_range(std::span<T> out)
+        {
+            std::size_t count = 0U;
+            for (auto& value : out)
+            {
+                if (!pop(value))
+                {
+                    break;
+                }
+
+                ++count;
+            }
+
+            return count;
+        }
+#endif
 
         /**
          * @brief Returns the capacity of the ring buffer.
