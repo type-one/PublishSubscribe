@@ -45,6 +45,8 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <type_traits>
+#include <utility>
 
 #if defined(__linux__)
 #include <pthread.h>
@@ -73,9 +75,15 @@ namespace tools
 
         using call_back = std::function<void(std::shared_ptr<Context>, const std::string& task_name)>;
 
-        worker_task(std::shared_ptr<Context> context, const std::string& task_name)
-            : m_context { context }
-            , m_task_name { task_name }
+        // Forward context and task name at construction to avoid extra copies.
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: requires clause constrains constructor arguments.
+        template <typename ContextArg, typename NameArg>
+            requires std::is_constructible_v<std::shared_ptr<Context>, ContextArg&&>
+                         && std::is_constructible_v<std::string, NameArg&&>
+        worker_task(ContextArg&& context, NameArg&& task_name)
+            : m_context { std::forward<ContextArg>(context) }
+            , m_task_name { std::forward<NameArg>(task_name) }
             , m_task { std::make_unique<std::thread>(
                   [this]()
                   {
@@ -86,6 +94,25 @@ namespace tools
                   }) }
         {
         }
+#else
+        // C++17: equivalent constructor constraints expressed with SFINAE.
+        template <typename ContextArg, typename NameArg,
+            typename = std::enable_if_t<std::is_constructible_v<std::shared_ptr<Context>, ContextArg&&>
+                && std::is_constructible_v<std::string, NameArg&&>>>
+        worker_task(ContextArg&& context, NameArg&& task_name)
+            : m_context { std::forward<ContextArg>(context) }
+            , m_task_name { std::forward<NameArg>(task_name) }
+            , m_task { std::make_unique<std::thread>(
+                  [this]()
+                  {
+#if defined(__linux__)
+                      pthread_setname_np(pthread_self(), m_task_name.c_str());
+#endif
+                      run_loop();
+                  }) }
+        {
+        }
+#endif
 
         ~worker_task()
         {
@@ -100,11 +127,43 @@ namespace tools
             return reinterpret_cast<void*>(m_task->native_handle());
         }
 
+        // rvalue overload: enqueue a pre-built std::function by move.
         void delegate(call_back&& work)
         {
             m_work_queue.emplace(std::move(work));
             m_work_sync.signal();
         }
+
+        // lvalue overload: enqueue a pre-built std::function by copy.
+        void delegate(const call_back& work)
+        {
+            m_work_queue.push(work);
+            m_work_sync.signal();
+        }
+
+        // perfect forwarding overload for arbitrary callable objects.
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: only participates for callable types convertible to call_back.
+        template <typename Callable>
+            requires std::is_invocable_r_v<void, Callable&, std::shared_ptr<Context>, const std::string&>
+            && std::is_constructible_v<call_back, Callable&&>
+        void delegate(Callable&& work)
+        {
+            m_work_queue.emplace(std::forward<Callable>(work));
+            m_work_sync.signal();
+        }
+#else
+        // C++17: equivalent callable constraints expressed with SFINAE.
+        template <typename Callable,
+            typename
+            = std::enable_if_t<std::is_invocable_r_v<void, Callable&, std::shared_ptr<Context>, const std::string&>
+                && std::is_constructible_v<call_back, Callable&&>>>
+        void delegate(Callable&& work)
+        {
+            m_work_queue.emplace(std::forward<Callable>(work));
+            m_work_sync.signal();
+        }
+#endif
 
     private:
         void run_loop()
