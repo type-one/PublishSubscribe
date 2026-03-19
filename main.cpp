@@ -790,6 +790,27 @@ void test_worker_tasks()
         std::this_thread::yield();
     }
 
+    // delegate_range (C++17): iterator-pair batch delegation
+    std::vector<my_worker_task::call_back> batch_jobs;
+    batch_jobs.reserve(4);
+    for (int i = 0; i < 4; ++i)
+    {
+        batch_jobs.emplace_back(
+            [](auto context, const auto& task_name) -> void
+            {
+                std::cout << "batch job " << context->loop_counter.load() << " on worker task " << task_name.c_str()
+                          << std::endl;
+                context->loop_counter++;
+                context->time_points.emplace(std::chrono::high_resolution_clock::now());
+            });
+    }
+    tasks[0]->delegate_range(batch_jobs.begin(), batch_jobs.end());
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+    // delegate_range (C++20): range overload with a container
+    tasks[1]->delegate_range(batch_jobs);
+#endif
+
     // sleep 2 sec
     std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
 

@@ -48,6 +48,10 @@
 #include <type_traits>
 #include <utility>
 
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#endif
+
 #if defined(__linux__)
 #include <pthread.h>
 #endif
@@ -161,6 +165,25 @@ namespace tools
         void delegate(Callable&& work)
         {
             m_work_queue.emplace(std::forward<Callable>(work));
+            m_work_sync.signal();
+        }
+#endif
+
+        // C++17: iterator-pair batch delegate; enqueue all then signal once.
+        template <typename InputIt>
+        void delegate_range(InputIt first, InputIt last)
+        {
+            m_work_queue.push_range(first, last);
+            m_work_sync.signal();
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: range batch delegate; accepts any input_range of call_back-compatible elements.
+        template <std::ranges::input_range Range>
+            requires std::is_constructible_v<call_back, std::ranges::range_reference_t<Range>>
+        void delegate_range(Range&& range)
+        {
+            m_work_queue.push_range(std::forward<Range>(range));
             m_work_sync.signal();
         }
 #endif
