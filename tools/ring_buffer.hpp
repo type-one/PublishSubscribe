@@ -128,7 +128,7 @@ namespace tools
         // perfect forwarding: constructs T in-place from arbitrary constructor arguments
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
         // C++20: requires clause constrains the template to valid T constructors
-        template<typename... Args>
+        template <typename... Args>
             requires std::is_constructible_v<T, Args...>
         void emplace(Args&&... args)
         {
@@ -139,7 +139,7 @@ namespace tools
         }
 #else
         // C++17: std::enable_if_t provides equivalent SFINAE constraint
-        template<typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
         void emplace(Args&&... args)
         {
             m_ring_buffer[m_push_index] = T(std::forward<Args>(args)...);
