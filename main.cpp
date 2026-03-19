@@ -38,6 +38,9 @@
 #include <utility>
 #include <vector>
 
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#endif
 
 #include "tools/async_observer.hpp"
 #include "tools/histogram.hpp"
@@ -88,6 +91,7 @@ void test_sync_queue()
     std::cout << "-- sync queue --" << std::endl;
     tools::sync_queue<std::string> str_queue;
 
+    // emplace: construct string in-place from a string literal
     str_queue.emplace("toto");
 
     auto item = str_queue.front_pop();
@@ -95,6 +99,60 @@ void test_sync_queue()
     {
         std::cout << *item << std::endl;
     }
+
+    // push rvalue: move a pre-constructed string into the queue
+    std::string s1 = "hello";
+    std::string s2 = "world";
+    str_queue.push(std::move(s1));
+    str_queue.push(std::move(s2));
+
+    std::cout << "size after two rvalue pushes: " << str_queue.size() << std::endl;
+
+    while (!str_queue.empty())
+    {
+        auto val = str_queue.front_pop();
+        if (val.has_value())
+            std::cout << "  popped: " << *val << std::endl;
+    }
+
+    // push_range (C++17): iterator-pair batch insert under a single lock
+    std::vector<std::string> batch = { "alpha", "beta", "gamma", "delta" };
+    str_queue.push_range(batch.begin(), batch.end());
+    std::cout << "size after push_range (iterator-pair): " << str_queue.size() << std::endl;
+
+    while (!str_queue.empty())
+    {
+        auto val = str_queue.front_pop();
+        if (val.has_value())
+            std::cout << "  popped: " << *val << std::endl;
+    }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+    // push_range (C++20): range overload — accepts any std::ranges::input_range
+    std::vector<std::string> range_batch = { "one", "two", "three" };
+    str_queue.push_range(range_batch); // lvalue range
+    std::cout << "size after push_range (C++20 range, lvalue): " << str_queue.size() << std::endl;
+
+    while (!str_queue.empty())
+    {
+        auto val = str_queue.front_pop();
+        if (val.has_value())
+            std::cout << "  popped: " << *val << std::endl;
+    }
+
+    // push_range with a range view: filter elements on the fly before enqueuing
+    std::vector<std::string> mixed = { "keep_me", "skip", "keep_too", "nope" };
+    auto filtered = mixed | std::views::filter([](const std::string& s) { return s.starts_with("keep"); });
+    str_queue.push_range(filtered);
+    std::cout << "size after push_range (C++20 filtered view): " << str_queue.size() << std::endl;
+
+    while (!str_queue.empty())
+    {
+        auto val = str_queue.front_pop();
+        if (val.has_value())
+            std::cout << "  popped: " << *val << std::endl;
+    }
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------

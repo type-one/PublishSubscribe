@@ -46,6 +46,10 @@
 #include <type_traits>
 #include <utility>
 
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#endif
+
 #include "tools/non_copyable.hpp"
 
 namespace tools
@@ -98,6 +102,27 @@ namespace tools
         }
 #endif
 
+        // C++17: iterator-pair batch push — inserts [first, last) under a single lock
+        template <typename InputIt>
+        void push_range(InputIt first, InputIt last)
+        {
+            std::unique_lock guard(m_mutex);
+            for (; first != last; ++first)
+                m_queue.emplace(*first); // emplace handles move iterators transparently
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: range overload — accepts any input_range (vector, span, views, ...) under one lock
+        template <std::ranges::input_range Range>
+            requires std::is_constructible_v<T, std::ranges::range_value_t<Range>>
+        void push_range(Range&& range)
+        {
+            std::unique_lock guard(m_mutex);
+            for (auto&& elem : range)
+                m_queue.push(std::forward<decltype(elem)>(elem));
+        }
+#endif
+
         void pop()
         {
             std::unique_lock guard(m_mutex);
@@ -107,7 +132,7 @@ namespace tools
             }
         }
 
-        std::optional<T> front_pop()
+        [[nodiscard]] std::optional<T> front_pop()
         {
             std::optional<T> item;
             std::unique_lock guard(m_mutex);
@@ -119,7 +144,7 @@ namespace tools
             return item;
         }
 
-        std::optional<T> front() const
+        [[nodiscard]] std::optional<T> front() const
         {
             std::optional<T> item;
             std::shared_lock guard(m_mutex);
@@ -130,7 +155,7 @@ namespace tools
             return item;
         }
 
-        std::optional<T> back() const
+        [[nodiscard]] std::optional<T> back() const
         {
             std::optional<T> item;
             std::shared_lock guard(m_mutex);
@@ -141,13 +166,13 @@ namespace tools
             return item;
         }
 
-        bool empty() const
+        [[nodiscard]] bool empty() const
         {
             std::shared_lock guard(m_mutex);
             return m_queue.empty();
         }
 
-        std::size_t size() const
+        [[nodiscard]] std::size_t size() const
         {
             std::shared_lock guard(m_mutex);
             return m_queue.size();
