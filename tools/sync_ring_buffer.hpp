@@ -171,7 +171,7 @@ namespace tools
 
     private:
         ring_buffer<T, Capacity> m_ring_buffer;
-        std::shared_mutex m_mutex;
+        mutable std::shared_mutex m_mutex;
     };
 }
 
