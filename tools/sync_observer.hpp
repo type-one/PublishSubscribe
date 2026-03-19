@@ -43,8 +43,10 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "tools/non_copyable.hpp"
@@ -93,14 +95,61 @@ namespace tools
         void subscribe(const Topic& topic, sync_observer_shared_ptr observer)
         {
             std::unique_lock guard(m_mutex);
-            m_subscribers.insert({ topic, observer });
+            // Copy topic, move observer smart pointer into storage.
+            m_subscribers.emplace(topic, std::move(observer));
+        }
+
+        // rvalue overload: moves topic and observer into the subscribers map
+        void subscribe(Topic&& topic, sync_observer_shared_ptr observer)
+        {
+            std::unique_lock guard(m_mutex);
+            m_subscribers.emplace(std::move(topic), std::move(observer));
         }
 
         void subscribe(const Topic& topic, const std::string& handler_name, handler handler)
         {
             std::unique_lock guard(m_mutex);
-            m_handlers.insert({ topic, std::make_pair(handler_name, handler) });
+            // Copy topic/name, move callable wrapper into storage.
+            m_handlers.emplace(topic, std::make_pair(handler_name, std::move(handler)));
         }
+
+        // rvalue overload: moves topic, handler name and handler into the handlers map
+        void subscribe(Topic&& topic, std::string handler_name, handler handler)
+        {
+            std::unique_lock guard(m_mutex);
+            // Move all three values into the multimap node.
+            m_handlers.emplace(std::move(topic), std::make_pair(std::move(handler_name), std::move(handler)));
+        }
+
+        // perfect forwarding for callable handlers (e.g. lambdas/functors) into std::function
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: requires clause constrains this overload to handler-callable types
+        template <typename TopicArg, typename NameArg, typename Callable>
+            requires std::is_constructible_v<Topic, TopicArg&&> && std::is_constructible_v<std::string, NameArg&&>
+            && std::is_invocable_r_v<void, Callable&, const Topic&, const Evt&, const std::string&>
+        void subscribe(TopicArg&& topic, NameArg&& handler_name, Callable&& callable)
+        {
+            std::unique_lock guard(m_mutex);
+            // Build Topic/std::string/std::function directly from forwarded arguments.
+            m_handlers.emplace(Topic(std::forward<TopicArg>(topic)),
+                std::make_pair(
+                    std::string(std::forward<NameArg>(handler_name)), handler(std::forward<Callable>(callable))));
+        }
+#else
+        // C++17: std::enable_if_t provides equivalent SFINAE constraints
+        template <typename TopicArg, typename NameArg, typename Callable,
+            typename = std::enable_if_t<std::is_constructible_v<Topic, TopicArg&&>
+                && std::is_constructible_v<std::string, NameArg&&>
+                && std::is_invocable_r_v<void, Callable&, const Topic&, const Evt&, const std::string&>>>
+        void subscribe(TopicArg&& topic, NameArg&& handler_name, Callable&& callable)
+        {
+            std::unique_lock guard(m_mutex);
+            // Same forwarding path as C++20, constrained with SFINAE.
+            m_handlers.emplace(Topic(std::forward<TopicArg>(topic)),
+                std::make_pair(
+                    std::string(std::forward<NameArg>(handler_name)), handler(std::forward<Callable>(callable))));
+        }
+#endif
 
         void unsubscribe(const Topic& topic, sync_observer_shared_ptr observer)
         {
