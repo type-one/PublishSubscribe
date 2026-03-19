@@ -45,6 +45,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 #include "tools/linux/linux_sched_deadline.hpp"
@@ -69,15 +70,37 @@ namespace tools
 
         using call_back = std::function<void(std::shared_ptr<Context>, const std::string& task_name)>;
 
-        periodic_task(call_back&& routine, std::shared_ptr<Context> context, const std::string& task_name,
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: perfect-forward callback/context/name into stored members.
+        template <typename RoutineArg, typename ContextArg, typename NameArg>
+            requires std::is_constructible_v<call_back, RoutineArg&&>
+                         && std::is_constructible_v<std::shared_ptr<Context>, ContextArg&&>
+                         && std::is_constructible_v<std::string, NameArg&&>
+        periodic_task(RoutineArg&& routine, ContextArg&& context, NameArg&& task_name,
             const std::chrono::duration<int, std::micro>& period)
-            : m_routine { std::move(routine) }
-            , m_context { context }
-            , m_task_name { task_name }
+            : m_routine { std::forward<RoutineArg>(routine) }
+            , m_context { std::forward<ContextArg>(context) }
+            , m_task_name { std::forward<NameArg>(task_name) }
             , m_period { period }
             , m_task { std::make_unique<std::thread>([this]() { periodic_call(); }) }
         {
         }
+#else
+        // C++17: equivalent forwarding constructor constrained via SFINAE.
+        template <typename RoutineArg, typename ContextArg, typename NameArg,
+            typename = std::enable_if_t<std::is_constructible_v<call_back, RoutineArg&&>
+                && std::is_constructible_v<std::shared_ptr<Context>, ContextArg&&>
+                && std::is_constructible_v<std::string, NameArg&&>>>
+        periodic_task(RoutineArg&& routine, ContextArg&& context, NameArg&& task_name,
+            const std::chrono::duration<int, std::micro>& period)
+            : m_routine { std::forward<RoutineArg>(routine) }
+            , m_context { std::forward<ContextArg>(context) }
+            , m_task_name { std::forward<NameArg>(task_name) }
+            , m_period { period }
+            , m_task { std::make_unique<std::thread>([this]() { periodic_call(); }) }
+        {
+        }
+#endif
 
         ~periodic_task()
         {
