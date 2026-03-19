@@ -43,7 +43,12 @@
 
 #include <array>
 #include <cstddef>
+#include <type_traits>
 #include <utility>
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#endif
 
 namespace tools
 {
@@ -146,6 +151,40 @@ namespace tools
             m_last_index = m_push_index;
             m_push_index = next_index(m_push_index);
             ++m_size;
+        }
+#endif
+
+        // C++17: iterator-pair batch push that stops when the ring buffer is full
+        template <typename InputIt>
+        std::size_t push_range(InputIt first, InputIt last)
+        {
+            std::size_t inserted = 0U;
+            for (; (first != last) && !full(); ++first)
+            {
+                emplace(*first);
+                ++inserted;
+            }
+            return inserted;
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: range batch push that stops when the ring buffer is full
+        template <std::ranges::input_range Range>
+            requires std::is_constructible_v<T, std::ranges::range_reference_t<Range>>
+        std::size_t push_range(Range&& range)
+        {
+            std::size_t inserted = 0U;
+            for (auto&& elem : range)
+            {
+                if (full())
+                {
+                    break;
+                }
+
+                emplace(std::forward<decltype(elem)>(elem));
+                ++inserted;
+            }
+            return inserted;
         }
 #endif
 

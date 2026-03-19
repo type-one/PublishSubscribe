@@ -59,13 +59,77 @@ void test_ring_buffer()
     std::cout << "-- ring buffer --" << std::endl;
     tools::ring_buffer<std::string, 64U> str_queue;
 
+    // emplace: construct string directly in the buffer
     str_queue.emplace("toto");
+
+    // push rvalue: move a pre-constructed string into the buffer
+    std::string moved = "titi";
+    str_queue.push(std::move(moved));
 
     auto item = str_queue.front();
 
-    std::cout << item << std::endl;
+    std::cout << "front after emplace/push: " << item << std::endl;
 
-    str_queue.pop();
+    std::cout << "drain initial content:" << std::endl;
+    while (!str_queue.empty())
+    {
+        std::cout << "  " << str_queue.front() << std::endl;
+        str_queue.pop();
+    }
+
+    // push_range (C++17): iterator-pair insertion
+    std::vector<std::string> batch = { "alpha", "beta", "gamma" };
+    const auto inserted_pair = str_queue.push_range(batch.begin(), batch.end());
+    std::cout << "inserted with iterator-pair: " << inserted_pair << std::endl;
+
+    std::cout << "drain iterator-pair batch:" << std::endl;
+    while (!str_queue.empty())
+    {
+        std::cout << "  " << str_queue.front() << std::endl;
+        str_queue.pop();
+    }
+
+    // capacity-bound behavior: insertion stops when full
+    tools::ring_buffer<std::string, 4U> small_queue;
+    std::vector<std::string> overflow_batch = { "A", "B", "C", "D", "E" };
+    const auto inserted_limited = small_queue.push_range(overflow_batch.begin(), overflow_batch.end());
+    std::cout << "inserted in capacity-limited buffer: " << inserted_limited << " / " << overflow_batch.size()
+              << std::endl;
+    std::cout << "small queue full: " << std::boolalpha << small_queue.full() << std::noboolalpha << std::endl;
+
+    std::cout << "drain capacity-limited buffer:" << std::endl;
+    while (!small_queue.empty())
+    {
+        std::cout << "  " << small_queue.front() << std::endl;
+        small_queue.pop();
+    }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+    // push_range (C++20): range overload with a container
+    std::vector<std::string> range_batch = { "one", "two", "three" };
+    const auto inserted_range = str_queue.push_range(range_batch);
+    std::cout << "inserted with C++20 range: " << inserted_range << std::endl;
+
+    std::cout << "drain C++20 container range:" << std::endl;
+    while (!str_queue.empty())
+    {
+        std::cout << "  " << str_queue.front() << std::endl;
+        str_queue.pop();
+    }
+
+    // push_range (C++20): range overload with a filtered view
+    std::vector<std::string> mixed = { "keep_1", "skip", "keep_2", "no" };
+    auto filtered = mixed | std::views::filter([](const std::string& s) { return s.starts_with("keep"); });
+    const auto inserted_view = str_queue.push_range(filtered);
+    std::cout << "inserted with C++20 filtered view: " << inserted_view << std::endl;
+
+    std::cout << "drain C++20 filtered view:" << std::endl;
+    while (!str_queue.empty())
+    {
+        std::cout << "  " << str_queue.front() << std::endl;
+        str_queue.pop();
+    }
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -112,7 +176,9 @@ void test_sync_queue()
     {
         auto val = str_queue.front_pop();
         if (val.has_value())
+        {
             std::cout << "  popped: " << *val << std::endl;
+        }
     }
 
     // push_range (C++17): iterator-pair batch insert under a single lock
@@ -124,7 +190,9 @@ void test_sync_queue()
     {
         auto val = str_queue.front_pop();
         if (val.has_value())
+        {
             std::cout << "  popped: " << *val << std::endl;
+        }
     }
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -137,7 +205,9 @@ void test_sync_queue()
     {
         auto val = str_queue.front_pop();
         if (val.has_value())
+        {
             std::cout << "  popped: " << *val << std::endl;
+        }
     }
 
     // push_range with a range view: filter elements on the fly before enqueuing
@@ -150,7 +220,9 @@ void test_sync_queue()
     {
         auto val = str_queue.front_pop();
         if (val.has_value())
+        {
             std::cout << "  popped: " << *val << std::endl;
+        }
     }
 #endif
 }
