@@ -300,6 +300,15 @@ void test_sync_queue()
     str_queue.push_range(batch.begin(), batch.end());
     std::cout << "size after push_range (iterator-pair): " << str_queue.size() << std::endl;
 
+    // pop_range (C++17): iterator-pair batch extraction under a single lock
+    std::array<std::string, 3> popped_batch {};
+    const auto popped_count = str_queue.pop_range(popped_batch.begin(), popped_batch.end());
+    std::cout << "popped with pop_range (iterator-pair): " << popped_count << std::endl;
+    for (std::size_t i = 0; i < popped_count; ++i)
+    {
+        std::cout << "  popped: " << popped_batch[i] << std::endl;
+    }
+
     while (!str_queue.empty())
     {
         auto val = str_queue.front_pop();
@@ -314,6 +323,15 @@ void test_sync_queue()
     std::vector<std::string> range_batch = { "one", "two", "three" };
     str_queue.push_range(range_batch); // lvalue range
     std::cout << "size after push_range (C++20 range, lvalue): " << str_queue.size() << std::endl;
+
+    // pop_range (C++20): span-based batch extraction
+    std::array<std::string, 4> popped_span {};
+    const auto popped_span_count = str_queue.pop_range(std::span<std::string>(popped_span));
+    std::cout << "popped with pop_range (C++20 span): " << popped_span_count << std::endl;
+    for (std::size_t i = 0; i < popped_span_count; ++i)
+    {
+        std::cout << "  popped: " << popped_span[i] << std::endl;
+    }
 
     while (!str_queue.empty())
     {

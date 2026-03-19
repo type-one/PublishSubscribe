@@ -48,6 +48,7 @@
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
 #include <ranges>
+#include <span>
 #endif
 
 #include "tools/non_copyable.hpp"
@@ -135,6 +136,42 @@ namespace tools
                 m_queue.pop();
             }
         }
+
+        // C++17: iterator-pair batch pop — extracts up to destination capacity under a single lock
+        template <typename OutputIt>
+        std::size_t pop_range(OutputIt first, OutputIt last)
+        {
+            std::size_t count = 0U;
+            std::unique_lock guard(m_mutex);
+            for (; (first != last) && !m_queue.empty(); ++first)
+            {
+                *first = std::move(m_queue.front());
+                m_queue.pop();
+                ++count;
+            }
+            return count;
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: span-based batch pop into contiguous storage under a single lock
+        std::size_t pop_range(std::span<T> out)
+        {
+            std::size_t count = 0U;
+            std::unique_lock guard(m_mutex);
+            for (auto& elem : out)
+            {
+                if (m_queue.empty())
+                {
+                    break;
+                }
+
+                elem = std::move(m_queue.front());
+                m_queue.pop();
+                ++count;
+            }
+            return count;
+        }
+#endif
 
         [[nodiscard]] std::optional<T> front_pop()
         {
