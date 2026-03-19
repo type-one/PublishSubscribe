@@ -38,7 +38,10 @@
 #include <cstddef>
 #include <optional>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 #include <vector>
+
 
 #include "tools/sync_object.hpp"
 #include "tools/sync_observer.hpp"
@@ -58,16 +61,40 @@ namespace tools
     class async_observer : public sync_observer<Topic, Evt> // NOLINT inherits indirectly from non copyable/non movable
     {
     public:
+        using event_entry = std::tuple<Topic, Evt, std::string>;
+
         async_observer() = default;
         virtual ~async_observer() = default;
 
         void inform(const Topic& topic, const Evt& event, const std::string& origin) override
         {
-            m_evt_queue.push({ topic, event, origin });
+            // Virtual observer API keeps const references; enqueue copies into async storage.
+            enqueue_event(topic, event, origin);
             m_wakeable.signal();
         }
 
-        using event_entry = std::tuple<Topic, Evt, std::string>;
+        // Perfect forwarding path for producers that can pass temporaries/movables directly.
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: requires clause constrains forwarded arguments to tuple-constructible ones.
+        template <typename TopicArg, typename EvtArg, typename OriginArg>
+            requires std::is_constructible_v<Topic, TopicArg&&> && std::is_constructible_v<Evt, EvtArg&&>
+            && std::is_constructible_v<std::string, OriginArg&&>
+        void enqueue_event(TopicArg&& topic, EvtArg&& event, OriginArg&& origin)
+        {
+            m_evt_queue.emplace(
+                std::forward<TopicArg>(topic), std::forward<EvtArg>(event), std::forward<OriginArg>(origin));
+        }
+#else
+        // C++17: std::enable_if_t provides equivalent SFINAE constraints.
+        template <typename TopicArg, typename EvtArg, typename OriginArg,
+            typename = std::enable_if_t<std::is_constructible_v<Topic, TopicArg&&>
+                && std::is_constructible_v<Evt, EvtArg&&> && std::is_constructible_v<std::string, OriginArg&&>>>
+        void enqueue_event(TopicArg&& topic, EvtArg&& event, OriginArg&& origin)
+        {
+            m_evt_queue.emplace(
+                std::forward<TopicArg>(topic), std::forward<EvtArg>(event), std::forward<OriginArg>(origin));
+        }
+#endif
 
         std::vector<event_entry> pop_all_events()
         {
@@ -139,7 +166,7 @@ namespace tools
 
     private:
         sync_object m_wakeable;
-        sync_queue<std::tuple<Topic, Evt, std::string>> m_evt_queue;
+        sync_queue<event_entry> m_evt_queue;
     };
 
 }
