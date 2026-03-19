@@ -139,13 +139,86 @@ void test_sync_ring_buffer()
     std::cout << "-- sync ring buffer --" << std::endl;
     tools::sync_ring_buffer<std::string, 64U> str_queue;
 
+    // emplace + push(rvalue)
     str_queue.emplace("toto");
+    std::string moved = "titi";
+    str_queue.push(std::move(moved));
 
-    auto item = str_queue.front_pop();
-    if (item.has_value())
+    std::cout << "drain initial sync content:" << std::endl;
+    while (!str_queue.empty())
     {
-        std::cout << *item << std::endl;
+        auto value = str_queue.front_pop();
+        if (value.has_value())
+        {
+            std::cout << "  " << *value << std::endl;
+        }
     }
+
+    // push_range (C++17): iterator-pair insertion under one lock
+    std::vector<std::string> batch = { "alpha", "beta", "gamma" };
+    const auto inserted_pair = str_queue.push_range(batch.begin(), batch.end());
+    std::cout << "inserted with iterator-pair: " << inserted_pair << std::endl;
+
+    std::cout << "drain iterator-pair sync batch:" << std::endl;
+    while (!str_queue.empty())
+    {
+        auto value = str_queue.front_pop();
+        if (value.has_value())
+        {
+            std::cout << "  " << *value << std::endl;
+        }
+    }
+
+    // capacity-bound behavior: insertion stops when full
+    tools::sync_ring_buffer<std::string, 4U> small_queue;
+    std::vector<std::string> overflow_batch = { "A", "B", "C", "D", "E" };
+    const auto inserted_limited = small_queue.push_range(overflow_batch.begin(), overflow_batch.end());
+    std::cout << "inserted in capacity-limited sync buffer: " << inserted_limited << " / " << overflow_batch.size()
+              << std::endl;
+    std::cout << "small sync queue full: " << std::boolalpha << small_queue.full() << std::noboolalpha << std::endl;
+
+    std::cout << "drain capacity-limited sync buffer:" << std::endl;
+    while (!small_queue.empty())
+    {
+        auto value = small_queue.front_pop();
+        if (value.has_value())
+        {
+            std::cout << "  " << *value << std::endl;
+        }
+    }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+    // push_range (C++20): range overload with a container
+    std::vector<std::string> range_batch = { "one", "two", "three" };
+    const auto inserted_range = str_queue.push_range(range_batch);
+    std::cout << "inserted with C++20 range: " << inserted_range << std::endl;
+
+    std::cout << "drain C++20 container sync range:" << std::endl;
+    while (!str_queue.empty())
+    {
+        auto value = str_queue.front_pop();
+        if (value.has_value())
+        {
+            std::cout << "  " << *value << std::endl;
+        }
+    }
+
+    // push_range (C++20): range overload with a filtered view
+    std::vector<std::string> mixed = { "keep_1", "skip", "keep_2", "no" };
+    auto filtered = mixed | std::views::filter([](const std::string& s) { return s.starts_with("keep"); });
+    const auto inserted_view = str_queue.push_range(filtered);
+    std::cout << "inserted with C++20 filtered view: " << inserted_view << std::endl;
+
+    std::cout << "drain C++20 filtered sync view:" << std::endl;
+    while (!str_queue.empty())
+    {
+        auto value = str_queue.front_pop();
+        if (value.has_value())
+        {
+            std::cout << "  " << *value << std::endl;
+        }
+    }
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------

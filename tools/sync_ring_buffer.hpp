@@ -48,6 +48,10 @@
 #include <type_traits>
 #include <utility>
 
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#endif
+
 #include "tools/non_copyable.hpp"
 #include "tools/ring_buffer.hpp"
 
@@ -100,6 +104,25 @@ namespace tools
         {
             std::unique_lock guard(m_mutex);
             m_ring_buffer.emplace(std::forward<Args>(args)...);
+        }
+#endif
+
+        // C++17: iterator-pair batch push under one lock
+        template <typename InputIt>
+        std::size_t push_range(InputIt first, InputIt last)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.push_range(first, last);
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: range batch push under one lock
+        template <std::ranges::input_range Range>
+            requires std::is_constructible_v<T, std::ranges::range_reference_t<Range>>
+        std::size_t push_range(Range&& range)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.push_range(std::forward<Range>(range));
         }
 #endif
 
