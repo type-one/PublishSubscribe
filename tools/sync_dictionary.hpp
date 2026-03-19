@@ -42,9 +42,12 @@
 
 #include <cstddef>
 #include <map>
+#include <mutex>
 #include <optional>
 #include <shared_mutex>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
 
 #include "tools/non_copyable.hpp"
 
@@ -73,6 +76,35 @@ namespace tools
             std::unique_lock guard(m_mutex);
             m_dictionary[key] = value;
         }
+
+        // rvalue overload: moves an already-constructed key and value into the dictionary
+        void add(K&& key, T&& value)
+        {
+            std::unique_lock guard(m_mutex);
+            m_dictionary[std::move(key)] = std::move(value);
+        }
+
+        // perfect forwarding: constructs key and value in-place from arbitrary constructor arguments
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: requires clause constrains the template to valid K and T constructors
+        template <typename... KeyArgs, typename... ValueArgs>
+            requires std::is_constructible_v<K, KeyArgs...> && std::is_constructible_v<T, ValueArgs...>
+        void add_emplace(KeyArgs&&... key_args, ValueArgs&&... value_args)
+        {
+            std::unique_lock guard(m_mutex);
+            m_dictionary[K(std::forward<KeyArgs>(key_args)...)] = T(std::forward<ValueArgs>(value_args)...);
+        }
+#else
+        // C++17: std::enable_if_t provides equivalent SFINAE constraint
+        template <typename... KeyArgs, typename... ValueArgs,
+            typename
+            = std::enable_if_t<std::is_constructible_v<K, KeyArgs...> && std::is_constructible_v<T, ValueArgs...>>>
+        void add_emplace(KeyArgs&&... key_args, ValueArgs&&... value_args)
+        {
+            std::unique_lock guard(m_mutex);
+            m_dictionary[K(std::forward<KeyArgs>(key_args)...)] = T(std::forward<ValueArgs>(value_args)...);
+        }
+#endif
 
         void remove(const K& key)
         {
