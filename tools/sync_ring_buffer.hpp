@@ -42,8 +42,10 @@
 #define SYNC_RING_BUFFER_HPP_
 
 #include <cstddef>
+#include <mutex>
 #include <optional>
 #include <shared_mutex>
+#include <type_traits>
 #include <utility>
 
 #include "tools/non_copyable.hpp"
@@ -74,11 +76,32 @@ namespace tools
             m_ring_buffer.push(elem);
         }
 
-        void emplace(T&& elem)
+        // rvalue overload: moves an already-constructed element into the buffer
+        void push(T&& elem)
         {
             std::unique_lock guard(m_mutex);
-            m_ring_buffer.emplace(std::move(elem));
+            m_ring_buffer.push(std::move(elem));
         }
+
+        // perfect forwarding: constructs T in-place from arbitrary constructor arguments
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: requires clause constrains the template to valid T constructors
+        template <typename... Args>
+            requires std::is_constructible_v<T, Args...>
+        void emplace(Args&&... args)
+        {
+            std::unique_lock guard(m_mutex);
+            m_ring_buffer.emplace(std::forward<Args>(args)...);
+        }
+#else
+        // C++17: std::enable_if_t provides equivalent SFINAE constraint
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        void emplace(Args&&... args)
+        {
+            std::unique_lock guard(m_mutex);
+            m_ring_buffer.emplace(std::forward<Args>(args)...);
+        }
+#endif
 
         void pop()
         {
