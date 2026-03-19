@@ -39,9 +39,11 @@
 #if !defined(SYNC_QUEUE_HPP_)
 #define SYNC_QUEUE_HPP_
 
+#include <mutex>
 #include <optional>
 #include <queue>
 #include <shared_mutex>
+#include <type_traits>
 #include <utility>
 
 #include "tools/non_copyable.hpp"
@@ -69,11 +71,32 @@ namespace tools
             m_queue.push(elem);
         }
 
-        void emplace(T&& elem)
+        // rvalue overload: moves an already-constructed element into the queue
+        void push(T&& elem)
         {
             std::unique_lock guard(m_mutex);
-            m_queue.emplace(std::move(elem));
+            m_queue.push(std::move(elem));
         }
+
+        // perfect forwarding: constructs T in-place from arbitrary constructor arguments
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: requires clause constrains the template to valid T constructors
+        template <typename... Args>
+            requires std::is_constructible_v<T, Args...>
+        void emplace(Args&&... args)
+        {
+            std::unique_lock guard(m_mutex);
+            m_queue.emplace(std::forward<Args>(args)...);
+        }
+#else
+        // C++17: std::enable_if_t provides equivalent SFINAE constraint
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        void emplace(Args&&... args)
+        {
+            std::unique_lock guard(m_mutex);
+            m_queue.emplace(std::forward<Args>(args)...);
+        }
+#endif
 
         void pop()
         {
