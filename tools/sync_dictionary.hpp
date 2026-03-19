@@ -49,6 +49,10 @@
 #include <unordered_map>
 #include <utility>
 
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#endif
+
 #include "tools/non_copyable.hpp"
 
 namespace tools
@@ -114,21 +118,43 @@ namespace tools
 
         void add_collection(const std::map<K, T>& collection)
         {
-            std::unique_lock guard(m_mutex);
-            for (const auto& [key, value] : collection)
-            {
-                m_dictionary[key] = value;
-            }
+            (void)add_range(collection.begin(), collection.end());
         }
 
         void add_collection(const std::unordered_map<K, T>& collection)
         {
-            std::unique_lock guard(m_mutex);
-            for (const auto& [key, value] : collection)
-            {
-                m_dictionary[key] = value;
-            }
+            (void)add_range(collection.begin(), collection.end());
         }
+
+        // C++17: iterator-pair batch insertion; returns inserted/updated count
+        template <typename InputIt>
+        std::size_t add_range(InputIt first, InputIt last)
+        {
+            std::size_t count = 0U;
+            std::unique_lock guard(m_mutex);
+            for (; first != last; ++first)
+            {
+                m_dictionary[first->first] = first->second;
+                ++count;
+            }
+            return count;
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: range batch insertion; accepts map, unordered_map, views, etc.
+        template <std::ranges::input_range Range>
+        std::size_t add_range(Range&& range)
+        {
+            std::size_t count = 0U;
+            std::unique_lock guard(m_mutex);
+            for (auto&& entry : range)
+            {
+                m_dictionary[entry.first] = entry.second;
+                ++count;
+            }
+            return count;
+        }
+#endif
 
         std::map<K, T> get_collection() const
         {

@@ -307,6 +307,7 @@ void test_sync_dictionary()
     std::cout << "-- sync dictionary --" << std::endl;
     tools::sync_dictionary<std::string, std::string> str_dict;
 
+    // single add/find/remove path
     str_dict.add("toto", "blob");
 
     auto result = str_dict.find("toto");
@@ -316,6 +317,50 @@ void test_sync_dictionary()
         std::cout << *result << std::endl;
         str_dict.remove("toto");
     }
+
+    // add_range (C++17): iterator-pair batch insertion
+    std::vector<std::pair<std::string, std::string>> batch = {
+        { "k1", "v1" },
+        { "k2", "v2" },
+        { "k3", "v3" },
+    };
+    const auto inserted_pair = str_dict.add_range(batch.begin(), batch.end());
+    std::cout << "add_range iterator-pair inserted: " << inserted_pair << std::endl;
+
+    auto snapshot = str_dict.get_collection();
+    std::cout << "dictionary snapshot after iterator-pair:" << std::endl;
+    for (const auto& [key, value] : snapshot)
+    {
+        std::cout << "  " << key << " => " << value << std::endl;
+    }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+    // add_range (C++20): range overload with a container
+    std::vector<std::pair<std::string, std::string>> extra = {
+        { "k4", "v4" },
+        { "k5", "v5" },
+        { "keep_A", "va" },
+        { "drop_A", "vb" },
+    };
+    const auto inserted_range = str_dict.add_range(extra);
+    std::cout << "add_range C++20 range inserted: " << inserted_range << std::endl;
+
+    // add_range (C++20): range overload with a filtered view
+    auto filtered = extra | std::views::filter([](const auto& kv) { return kv.first.starts_with("keep"); });
+    const auto inserted_view = str_dict.add_range(filtered);
+    std::cout << "add_range C++20 filtered view inserted: " << inserted_view << std::endl;
+#endif
+
+    snapshot = str_dict.get_collection();
+    std::cout << "dictionary final snapshot (size=" << snapshot.size() << "):" << std::endl;
+    for (const auto& [key, value] : snapshot)
+    {
+        std::cout << "  " << key << " => " << value << std::endl;
+    }
+
+    str_dict.clear();
+    std::cout << "dictionary empty after clear: " << std::boolalpha << str_dict.empty() << std::noboolalpha
+              << std::endl;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
