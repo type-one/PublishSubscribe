@@ -365,6 +365,40 @@ void test_sync_dictionary()
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
+void test_histogram()
+{
+    std::cout << "-- histogram --" << std::endl;
+    tools::histogram<double> hist;
+
+    hist.add(1.0);
+    hist.emplace(2.0);
+
+    // add_range (C++17): iterator-pair batch insertion
+    std::vector<double> samples = { 1.0, 2.0, 2.0, 3.5, 3.5, 3.5 };
+    const auto inserted_pair = hist.add_range(samples.begin(), samples.end());
+    std::cout << "add_range iterator-pair inserted: " << inserted_pair << std::endl;
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+    // add_range (C++20): range overload with a container
+    std::vector<double> extra = { -2.0, -1.0, 0.0, 0.5, 4.0, 5.0 };
+    const auto inserted_range = hist.add_range(extra);
+    std::cout << "add_range C++20 range inserted: " << inserted_range << std::endl;
+
+    // add_range (C++20): range overload with a filtered view
+    auto non_negative = extra | std::views::filter([](double value) { return value >= 0.0; });
+    const auto inserted_view = hist.add_range(non_negative);
+    std::cout << "add_range C++20 filtered view inserted: " << inserted_view << std::endl;
+#endif
+
+    const auto avg = hist.average();
+    const auto var = hist.variance(avg);
+    std::cout << "hist total count: " << hist.total_count() << std::endl;
+    std::cout << "hist top value: " << hist.top() << " (" << hist.top_occurence() << " times)" << std::endl;
+    std::cout << "hist avg: " << avg << " median: " << hist.median() << " variance: " << var << std::endl;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
 enum class my_topic
 {
     generic,
@@ -865,6 +899,7 @@ int main(int argc, char* argv[])
     test_sync_ring_buffer();
     test_sync_queue();
     test_sync_dictionary();
+    test_histogram();
 
     test_publish_subscribe();
     test_periodic_task();

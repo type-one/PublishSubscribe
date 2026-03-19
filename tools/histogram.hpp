@@ -48,6 +48,10 @@
 #include <utility>
 #include <vector>
 
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#endif
+
 #include "tools/non_copyable.hpp"
 
 #ifndef M_TWO_PI
@@ -103,6 +107,35 @@ namespace tools
         void emplace(Args&&... args)
         {
             add_impl(T(std::forward<Args>(args)...));
+        }
+#endif
+
+        // C++17: iterator-pair batch add
+        template <typename InputIt>
+        std::size_t add_range(InputIt first, InputIt last)
+        {
+            std::size_t count = 0U;
+            for (; first != last; ++first)
+            {
+                add_impl(*first);
+                ++count;
+            }
+            return count;
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: range batch add
+        template <std::ranges::input_range Range>
+            requires std::is_constructible_v<T, std::ranges::range_reference_t<Range>>
+        std::size_t add_range(Range&& range)
+        {
+            std::size_t count = 0U;
+            for (auto&& value : range)
+            {
+                add_impl(std::forward<decltype(value)>(value));
+                ++count;
+            }
+            return count;
         }
 #endif
 
