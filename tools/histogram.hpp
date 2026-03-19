@@ -43,7 +43,9 @@
 #include <algorithm>
 #include <cmath>
 #include <random>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "tools/non_copyable.hpp"
@@ -75,35 +77,34 @@ namespace tools
          *
          * @param value The value to be added to the histogram.
          */
-        void add(T value)
+        void add(const T& value)
         {
-            if (0 == m_occurences.count(value)) // first time
-            {
-                m_occurences.emplace(value, 1);
-
-                if (0 == m_top_occurence)
-                {
-                    m_top_occurence = 1;
-                    m_top_value = value;
-                }
-            }
-            else // found twice at least
-            {
-                auto found = m_occurences.find(value);
-                if (found != m_occurences.end())
-                {
-                    found->second += 1;
-
-                    if (found->second > m_top_occurence)
-                    {
-                        m_top_occurence = found->second;
-                        m_top_value = value;
-                    }
-                }
-            }
-
-            ++m_total_count;
+            add_impl(value);
         }
+
+        // rvalue overload: moves an already-constructed value into the histogram key storage
+        void add(T&& value)
+        {
+            add_impl(std::move(value));
+        }
+
+        // perfect forwarding: builds T from constructor arguments before counting occurrences
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: requires clause constrains the template to valid T constructors
+        template <typename... Args>
+            requires std::is_constructible_v<T, Args...>
+        void emplace(Args&&... args)
+        {
+            add_impl(T(std::forward<Args>(args)...));
+        }
+#else
+        // C++17: std::enable_if_t provides equivalent SFINAE constraint
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        void emplace(Args&&... args)
+        {
+            add_impl(T(std::forward<Args>(args)...));
+        }
+#endif
 
         /**
          * @brief Returns the top value of the histogram.
@@ -328,6 +329,25 @@ namespace tools
         }
 
     private:
+        template <typename U>
+        void add_impl(U&& value)
+        {
+            auto [found, inserted] = m_occurences.try_emplace(std::forward<U>(value), 1);
+
+            if (!inserted)
+            {
+                found->second += 1;
+            }
+
+            if ((0 == m_top_occurence) || (found->second > m_top_occurence))
+            {
+                m_top_occurence = found->second;
+                m_top_value = found->first;
+            }
+
+            ++m_total_count;
+        }
+
         std::unordered_map<T, int> m_occurences;
         int m_total_count = 0;
         int m_top_occurence = 0;
