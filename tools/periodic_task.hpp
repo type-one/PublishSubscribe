@@ -70,6 +70,8 @@ namespace tools
 
         using call_back = std::function<void(std::shared_ptr<Context>, const std::string& task_name)>;
 
+        // Forward routine/context/name at construction to minimize extra copies.
+
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
         // C++20: perfect-forward callback/context/name into stored members.
         template <typename RoutineArg, typename ContextArg, typename NameArg>
