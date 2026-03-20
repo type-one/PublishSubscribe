@@ -87,15 +87,50 @@ namespace
     // data structure statically allocated in .bss region
     blocks_cache g_mem_cache = {};
 
+    // Round up to the next power-of-two with a C++17 fallback.
+    constexpr std::size_t bit_ceil_size(std::size_t value)
+    {
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        return std::bit_ceil(value);
+#else
+        if (value <= 1U)
+        {
+            return 1U;
+        }
+
+        --value;
+        for (std::size_t shift = 1U; shift < (sizeof(std::size_t) * 8U); shift <<= 1U)
+        {
+            value |= (value >> shift);
+        }
+        return value + 1U;
+#endif
+    }
+
+    // Compute log2(value) for a non-zero power-of-two value.
+    constexpr int log2_pow2(std::size_t value)
+    {
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        return static_cast<int>(std::countr_zero(value));
+#else
+        int log2_value = 0;
+        while ((value >>= 1U) != 0U)
+        {
+            ++log2_value;
+        }
+        return log2_value;
+#endif
+    }
+
     constexpr std::size_t pow2_blocksize(std::size_t orig_size)
     {
-        return std::max(std::bit_ceil(orig_size), static_cast<std::size_t>(MIN_CACHED_BLOCK_SIZE));
+        return std::max(bit_ceil_size(orig_size), static_cast<std::size_t>(MIN_CACHED_BLOCK_SIZE));
     }
 
     constexpr int log2int(std::size_t pow2_size)
     {
         // input is non-zero and is a pow of 2 (computed previously with pow2_blocksize)
-        return std::countr_zero(pow2_size) + 1;
+        return log2_pow2(pow2_size) + 1;
     }
 
     void* cache_alloc(std::size_t size_pow2)

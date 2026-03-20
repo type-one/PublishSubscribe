@@ -2,7 +2,7 @@
 
 Agnostic, Lightweight and Portable Publish-Subscribe Helper
 
-- written in C++17 using templated classes
+- written in C++17 (and C++20) using templated classes
 - synchronous/asynchronous observer
 - topic subscription
 
@@ -18,14 +18,15 @@ Goodies:
 - simple thread-safe and resizeable ring vector on top of std::vector
 - queuable commands
 - lock-free ring-buffer
-- C++20 only: custom pool allocator for global new/new[]/delete/delete[]
+- custom pool allocator for global new/new[]/delete/delete[]
 
 [GitHub repository](https://github.com/type-one/PublishSubscribe)
 
 ## What
 
-Small test program written in C++17 to implement a simple Publish/Subscribe pattern.
-The code is portable and lightweight.
+Small test program written in C++17 (and C++20) to implement a simple Publish/Subscribe pattern. The code is portable and lightweight.
+
+It compiles with C++17 and C++20 (with some extra features enabled, like std::ranges compatibility).
 
 ## Why
 

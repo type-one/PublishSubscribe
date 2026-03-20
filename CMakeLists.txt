@@ -92,16 +92,16 @@ endif()
 
 if(CMAKE_CXX_STANDARD GREATER_EQUAL 20)
     message(STATUS "C++20 or newer is supported/enabled")
-
-    # mem pool allocator to prevent memory fragmentation for small and frequently dynamically allocated events/messages
-    # note: it can introduce some slow-down but memory allocation pattern is more predictive and stable
-
-    # uncomment to use mem pool allocator instead of regular heap allocation (requires C++ 20 or above)
-    #add_compile_definitions(USE_MEM_POOL_ALLOCATOR)
-
-    # uncomment to warmup the mem pool with pre-allocated chunks of memory
-    #add_compile_definitions(USE_MEM_POOL_ALLOCATOR_WARMUP)
 endif()
+
+# mem pool allocator to prevent memory fragmentation for small and frequently dynamically allocated events/messages
+# note: it can introduce some slow-down but memory allocation pattern is more predictive and stable
+
+# uncomment to use mem pool allocator instead of regular heap allocation
+#add_compile_definitions(USE_MEM_POOL_ALLOCATOR)
+
+# uncomment to warmup the mem pool with pre-allocated chunks of memory
+#add_compile_definitions(USE_MEM_POOL_ALLOCATOR_WARMUP)
 
 # display actual compiling definitions
 get_directory_property(DirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS)
