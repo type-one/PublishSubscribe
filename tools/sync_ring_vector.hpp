@@ -47,6 +47,11 @@
 #include <shared_mutex>
 #include <utility>
 
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#include <span>
+#endif
+
 #include "tools/non_copyable.hpp"
 #include "tools/ring_vector.hpp"
 
@@ -108,6 +113,75 @@ namespace tools
             std::unique_lock guard(m_mutex);
             m_ring_vector.emplace(std::move(elem));
         }
+
+        // C++17: batch insertion via iterator pair
+        /**
+         * @brief Inserts a range of elements into the ring vector (C++17).
+         *
+         * Thread-safe batch insertion using iterator pair. Stops at capacity limit.
+         * @tparam InputIt Input iterator type
+         * @param first Iterator to first element
+         * @param last Iterator to past-the-end element
+         * @return Number of elements actually inserted
+         */
+        template <typename InputIt>
+        std::size_t push_range(InputIt first, InputIt last)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.push_range(first, last);
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: batch insertion via range concept
+        /**
+         * @brief Inserts a range of elements into the ring vector (C++20).
+         *
+         * Thread-safe batch insertion using std::ranges. Stops at capacity limit.
+         * @tparam Range Input range type
+         * @param range The input range to insert from
+         * @return Number of elements actually inserted
+         */
+        template <typename Range>
+            requires std::ranges::input_range<Range>
+        std::size_t push_range(Range&& range)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.push_range(std::forward<Range>(range));
+        }
+#endif
+
+        // C++17: batch extraction via iterator pair
+        /**
+         * @brief Extracts multiple elements from the ring vector (C++17).
+         *
+         * Thread-safe batch extraction using iterator pair.
+         * @tparam OutputIt Output iterator type
+         * @param first Iterator to first output position
+         * @param last Iterator to past-the-end output position
+         * @return Number of elements actually extracted
+         */
+        template <typename OutputIt>
+        std::size_t pop_range(OutputIt first, OutputIt last)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.pop_range(first, last);
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: batch extraction via span
+        /**
+         * @brief Extracts multiple elements into a span (C++20).
+         *
+         * Thread-safe batch extraction using std::span.
+         * @param buffer Output span to fill
+         * @return Number of elements actually extracted
+         */
+        std::size_t pop_range(std::span<T> buffer)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.pop_range(buffer);
+        }
+#endif
 
         /**
          * @brief Removes the last element from the ring vector.

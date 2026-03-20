@@ -48,10 +48,12 @@
 #include "tools/lock_free_ring_buffer.hpp"
 #include "tools/periodic_task.hpp"
 #include "tools/ring_buffer.hpp"
+#include "tools/ring_vector.hpp"
 #include "tools/sync_dictionary.hpp"
 #include "tools/sync_observer.hpp"
 #include "tools/sync_queue.hpp"
 #include "tools/sync_ring_buffer.hpp"
+#include "tools/sync_ring_vector.hpp"
 #include "tools/worker_task.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -293,6 +295,202 @@ void test_sync_ring_buffer()
         if (value.has_value())
         {
             std::cout << "  " << *value << std::endl;
+        }
+    }
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_ring_vector()
+{
+    std::cout << "-- ring vector --" << std::endl;
+    tools::ring_vector<std::string> str_vec(10U);
+
+    // emplace: construct string directly in the vector
+    str_vec.emplace("alpha");
+
+    // push rvalue: move a pre-constructed string into the vector
+    std::string moved = "beta";
+    str_vec.push(std::move(moved));
+
+    auto item = str_vec.front();
+    std::cout << "front after emplace/push: " << item << std::endl;
+
+    std::cout << "drain initial content:" << std::endl;
+    while (!str_vec.empty())
+    {
+        std::cout << "  " << str_vec.front() << std::endl;
+        str_vec.pop();
+    }
+
+    // C++17: push_range via iterator-pair insertion
+    {
+        std::vector<std::string> batch = { "apple", "banana", "cherry" };
+        const auto inserted = str_vec.push_range(batch.begin(), batch.end());
+        std::cout << "inserted with iterator-pair: " << inserted << std::endl;
+    }
+
+    // C++17: pop_range via iterator-pair extraction
+    {
+        std::array<std::string, 2> output {};
+        const auto popped = str_vec.pop_range(output.begin(), output.end());
+        std::cout << "popped with iterator-pair: " << popped << std::endl;
+        for (std::size_t i = 0; i < popped; ++i)
+        {
+            std::cout << "  " << output[i] << std::endl;
+        }
+    }
+
+    std::cout << "drain iterator-pair batch:" << std::endl;
+    while (!str_vec.empty())
+    {
+        std::cout << "  " << str_vec.front() << std::endl;
+        str_vec.pop();
+    }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+    // C++20: push_range via ranges concept
+    {
+        std::vector<std::string> batch = { "dog", "elephant", "fox", "giraffe" };
+        auto filtered = batch | std::views::filter([](const auto& s) { return s.length() > 3; });
+        const auto inserted = str_vec.push_range(filtered);
+        std::cout << "inserted with C++20 filtered range: " << inserted << std::endl;
+    }
+
+    // C++20: pop_range via span
+    {
+        std::array<std::string, 3> buffer {};
+        const auto popped = str_vec.pop_range(std::span(buffer));
+        std::cout << "popped with C++20 span: " << popped << std::endl;
+        for (std::size_t i = 0; i < popped; ++i)
+        {
+            std::cout << "  " << buffer[i] << std::endl;
+        }
+    }
+
+    std::cout << "drain C++20 span batch:" << std::endl;
+    while (!str_vec.empty())
+    {
+        std::cout << "  " << str_vec.front() << std::endl;
+        str_vec.pop();
+    }
+#endif
+
+    // Resize test: expand capacity and add more items
+    {
+        std::cout << "resize test:" << std::endl;
+        str_vec.emplace("item1");
+        str_vec.emplace("item2");
+        str_vec.emplace("item3");
+        std::cout << "before resize: size=" << str_vec.size() << ", capacity=" << str_vec.capacity() << std::endl;
+        str_vec.resize(20U);
+        std::cout << "after expand resize: size=" << str_vec.size() << ", capacity=" << str_vec.capacity() << std::endl;
+
+        // Add more items after resize
+        std::vector<std::string> more = { "new1", "new2", "new3", "new4" };
+        str_vec.push_range(more.begin(), more.end());
+        std::cout << "after push_range: size=" << str_vec.size() << std::endl;
+
+        // Shrink and check if oldest items are dropped
+        std::cout << "contents before shrink:" << std::endl;
+        for (std::size_t i = 0; i < str_vec.size(); ++i)
+        {
+            std::cout << "  [" << i << "] " << str_vec[i] << std::endl;
+        }
+
+        str_vec.resize(4U);
+        std::cout << "after shrink resize: size=" << str_vec.size() << ", capacity=" << str_vec.capacity() << std::endl;
+        std::cout << "contents after shrink:" << std::endl;
+        for (std::size_t i = 0; i < str_vec.size(); ++i)
+        {
+            std::cout << "  [" << i << "] " << str_vec[i] << std::endl;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_sync_ring_vector()
+{
+    std::cout << "-- sync ring vector --" << std::endl;
+    tools::sync_ring_vector<std::string> str_vec(10U);
+
+    // emplace: construct string directly in the vector
+    str_vec.emplace("initial");
+
+    auto item = str_vec.front();
+    if (item.has_value())
+    {
+        std::cout << "front after emplace: " << *item << std::endl;
+    }
+
+    // drain initial content
+    std::cout << "drain initial content:" << std::endl;
+    while (!str_vec.empty())
+    {
+        auto val = str_vec.front_pop();
+        if (val.has_value())
+        {
+            std::cout << "  " << *val << std::endl;
+        }
+    }
+
+    // C++17: push_range via iterator-pair
+    {
+        std::vector<std::string> batch = { "one", "two", "three" };
+        const auto inserted = str_vec.push_range(batch.begin(), batch.end());
+        std::cout << "inserted with iterator-pair: " << inserted << std::endl;
+    }
+
+    // C++17: pop_range via iterator-pair
+    {
+        std::array<std::string, 2> output {};
+        const auto popped = str_vec.pop_range(output.begin(), output.end());
+        std::cout << "popped with iterator-pair: " << popped << std::endl;
+        for (std::size_t i = 0; i < popped; ++i)
+        {
+            std::cout << "  " << output[i] << std::endl;
+        }
+    }
+
+    std::cout << "drain iterator-pair batch:" << std::endl;
+    while (!str_vec.empty())
+    {
+        auto val = str_vec.front_pop();
+        if (val.has_value())
+        {
+            std::cout << "  " << *val << std::endl;
+        }
+    }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+    // C++20: push_range via ranges concept
+    {
+        std::vector<std::string> batch = { "red", "green", "blue", "yellow" };
+        auto filtered = batch | std::views::filter([](const auto& s) { return s.length() > 4; });
+        const auto inserted = str_vec.push_range(filtered);
+        std::cout << "inserted with C++20 filtered range: " << inserted << std::endl;
+    }
+
+    // C++20: pop_range via span
+    {
+        std::array<std::string, 3> buffer {};
+        const auto popped = str_vec.pop_range(std::span(buffer));
+        std::cout << "popped with C++20 span: " << popped << std::endl;
+        for (std::size_t i = 0; i < popped; ++i)
+        {
+            std::cout << "  " << buffer[i] << std::endl;
+        }
+    }
+
+    std::cout << "drain C++20 span batch:" << std::endl;
+    while (!str_vec.empty())
+    {
+        auto val = str_vec.front_pop();
+        if (val.has_value())
+        {
+            std::cout << "  " << *val << std::endl;
         }
     }
 #endif
@@ -1014,6 +1212,8 @@ int main(int argc, char* argv[])
     test_ring_buffer();
     test_lock_free_ring_buffer();
     test_sync_ring_buffer();
+    test_ring_vector();
+    test_sync_ring_vector();
     test_sync_queue();
     test_sync_dictionary();
     test_histogram();

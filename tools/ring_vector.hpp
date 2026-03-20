@@ -46,6 +46,11 @@
 #include <utility>
 #include <vector>
 
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+#include <ranges>
+#include <span>
+#endif
+
 namespace tools
 {
 
@@ -297,6 +302,101 @@ namespace tools
         {
             return m_capacity;
         }
+
+        // C++17: batch insertion via iterator pair
+        /**
+         * @brief Inserts a range of elements into the ring vector (C++17).
+         *
+         * Uses iterator pairs to insert multiple elements. Stops at capacity limit.
+         * @tparam InputIt Input iterator type
+         * @param first Iterator to first element
+         * @param last Iterator to past-the-end element
+         * @return Number of elements actually inserted
+         */
+        template <typename InputIt>
+        std::size_t push_range(InputIt first, InputIt last)
+        {
+            std::size_t inserted = 0;
+            for (; first != last && !full(); ++first)
+            {
+                push(*first);
+                ++inserted;
+            }
+            return inserted;
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: batch insertion via range concept
+        /**
+         * @brief Inserts a range of elements into the ring vector (C++20).
+         *
+         * Uses std::ranges concept for container acceptance. Stops at capacity limit.
+         * @tparam Range Input range type (requires std::ranges::input_range)
+         * @param range The input range to insert from
+         * @return Number of elements actually inserted
+         */
+        template <typename Range>
+        requires std::ranges::input_range<Range> && std::is_assignable_v<T&, std::ranges::range_reference_t<Range>>
+        std::size_t push_range(Range&& range)
+        {
+            std::size_t inserted = 0;
+            for (auto&& elem : range)
+            {
+                if (full())
+                    break;
+                push(std::forward<decltype(elem)>(elem));
+                ++inserted;
+            }
+            return inserted;
+        }
+#endif
+
+        // C++17: batch extraction via iterator pair
+        /**
+         * @brief Extracts multiple elements from the ring vector (C++17).
+         *
+         * Uses iterator pairs to extract elements. Stops when ring is empty or output full.
+         * @tparam OutputIt Output iterator type
+         * @param first Iterator to first output position
+         * @param last Iterator to past-the-end output position
+         * @return Number of elements actually extracted
+         */
+        template <typename OutputIt>
+        std::size_t pop_range(OutputIt first, OutputIt last)
+        {
+            std::size_t popped = 0;
+            for (; first != last && !empty(); ++first)
+            {
+                *first = front();
+                pop();
+                ++popped;
+            }
+            return popped;
+        }
+
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        // C++20: batch extraction via span
+        /**
+         * @brief Extracts multiple elements into a span (C++20).
+         *
+         * Uses std::span for contiguous output buffer. Returns actual count extracted.
+         * @param buffer Output span to fill
+         * @return Number of elements actually extracted
+         */
+        std::size_t pop_range(std::span<T> buffer)
+        {
+            std::size_t popped = 0;
+            for (auto& elem : buffer)
+            {
+                if (empty())
+                    break;
+                elem = front();
+                pop();
+                ++popped;
+            }
+            return popped;
+        }
+#endif
 
         /**
          * @brief Accesses the element at the specified index in the ring vector.
