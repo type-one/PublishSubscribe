@@ -7,7 +7,7 @@
 
 //-----------------------------------------------------------------------------//
 // C++ Publish/Subscribe Pattern - Spare time development for fun              //
-// (c) 2025 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois      //
+// (c) 2025-2026 Laurent Lardinois https://be.linkedin.com/in/laurentlardinois //
 //                                                                             //
 // https://github.com/type-one/PublishSubscribe                                //
 //                                                                             //
