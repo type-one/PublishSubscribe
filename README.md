@@ -15,6 +15,7 @@ Goodies:
 - simple periodic task helper
 - simple worker task helper
 - simple thread-safe ring buffer on top of std::array
+- simple thread-safe and resizeable ring vector on top of std::vector
 - queuable commands
 - lock-free ring-buffer
 - C++20 only: custom pool allocator for global new/new[]/delete/delete[]
