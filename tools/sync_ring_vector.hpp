@@ -101,6 +101,19 @@ namespace tools
         }
 
         /**
+         * @brief Pushes an rvalue element into the ring vector.
+         *
+         * This method adds an element to the ring vector in a thread-safe manner.
+         *
+         * @param elem The element to be moved into the ring vector.
+         */
+        void push(T&& elem)
+        {
+            std::unique_lock guard(m_mutex);
+            m_ring_vector.push(std::move(elem));
+        }
+
+        /**
          * @brief Emplaces an element into the ring vector.
          *
          * This function locks the mutex to ensure thread safety and then
@@ -108,10 +121,11 @@ namespace tools
          *
          * @param elem The element to be emplaced into the ring vector.
          */
-        void emplace(T&& elem)
+        template <typename U>
+        void emplace(U&& elem)
         {
             std::unique_lock guard(m_mutex);
-            m_ring_vector.emplace(std::move(elem));
+            m_ring_vector.emplace(std::forward<U>(elem));
         }
 
         // C++17: batch insertion via iterator pair

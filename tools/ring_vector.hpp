@@ -189,13 +189,32 @@ namespace tools
         }
 
         /**
+         * @brief Pushes an rvalue element into the ring vector.
+         *
+         * @param elem The element to be moved into the ring vector.
+         */
+        void push(T&& elem)
+        {
+            m_ring_vector[m_push_index] = std::move(elem);
+            m_last_index = m_push_index;
+            m_push_index = next_index(m_push_index);
+            ++m_size;
+            if (m_size > m_capacity)
+            {
+                // first entry is overwritten
+                m_pop_index = next_index(m_pop_index);
+            }
+        }
+
+        /**
          * @brief Inserts an element in place into the ring vector at the current push index.
          *
          * @param elem The element to be inserted into the ring vector.
          */
-        void emplace(T&& elem)
+        template <typename U>
+        void emplace(U&& elem)
         {
-            m_ring_vector[m_push_index] = std::move(elem);
+            m_ring_vector[m_push_index] = std::forward<U>(elem);
             m_last_index = m_push_index;
             m_push_index = next_index(m_push_index);
             ++m_size;
@@ -336,7 +355,7 @@ namespace tools
          * @return Number of elements actually inserted
          */
         template <typename Range>
-        requires std::ranges::input_range<Range> && std::is_assignable_v<T&, std::ranges::range_reference_t<Range>>
+            requires std::ranges::input_range<Range> && std::is_assignable_v<T&, std::ranges::range_reference_t<Range>>
         std::size_t push_range(Range&& range)
         {
             std::size_t inserted = 0;
