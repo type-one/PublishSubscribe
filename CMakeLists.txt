@@ -14,17 +14,17 @@ endif()
 if(UNIX AND (${CMAKE_SYSTEM_NAME} STREQUAL ${CMAKE_HOST_SYSTEM_NAME}))
     EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 elseif(ANDROID)
-    set(ARCHITECTURE, ${ANDROID_ABI})
+    set(ARCHITECTURE ${ANDROID_ABI})
 elseif(APPLE)
-    set(ARCHITECTURE, ${OSX_ARCHITECTURES})
+    set(ARCHITECTURE ${OSX_ARCHITECTURES})
 else()
-    set(ARCHITECTURE, "unknown")
+    set(ARCHITECTURE "unknown")
 endif()
 
 #detect Platform (Jetson, Raspberry Pi, ...)
 #EXECUTE_PROCESS( COMMAND cat /proc/cpuinfo COMMAND grep Hardware COMMAND tr -d '\n' OUTPUT_VARIABLE PLATFORM_DETECTION )
 # grep Hardware /proc/cpuinfo
-set(PLATFORM_DETECTION, "unknown")
+set(PLATFORM_DETECTION "unknown")
 
 message( STATUS "Architecture: ${ARCHITECTURE}" )
 
@@ -72,7 +72,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(LINUX)
-    set(CMAKE_CXX_FLAGS "-fpermissive -march=native")
+    set(CMAKE_CXX_FLAGS "-march=native")
     set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall -Wextra -D DEBUG")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -funsafe-math-optimizations -D NDEBUG")
 
@@ -116,7 +116,7 @@ endforeach()
 #
 
 # Local header files here ONLY
-file(GLOB_RECURSE TARGET_H
+file(GLOB_RECURSE TARGET_H CONFIGURE_DEPENDS
     *.h
     *.hpp
     *.inl
