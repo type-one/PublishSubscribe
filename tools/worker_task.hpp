@@ -128,7 +128,11 @@ namespace tools
         // note: native handle allows specific OS calls like setting scheduling policy or setting priority
         [[nodiscard]] void* native_handle() const
         {
+    #if defined(__linux__)
             return reinterpret_cast<void*>(m_task->native_handle());
+    #else
+            return nullptr;
+    #endif
         }
 
         // rvalue overload: enqueue a pre-built std::function by move.
@@ -206,7 +210,6 @@ namespace tools
             } // run loop
         }
 
-        call_back m_startup_routine;
         tools::sync_object m_work_sync = {};
         tools::sync_queue<call_back> m_work_queue = {};
         std::shared_ptr<Context> m_context;
