@@ -130,13 +130,13 @@ namespace
     constexpr int log2int(std::size_t pow2_size)
     {
         // input is non-zero and is a pow of 2 (computed previously with pow2_blocksize)
-        return log2_pow2(pow2_size) + 1;
+        return log2_pow2(pow2_size);
     }
 
     void* cache_alloc(std::size_t size_pow2)
     {
         // reuse a block if possible
-        const int idx = log2int(size_pow2) - MIN_CACHED_BLOCK_POW2_SIZE - 1;
+        const int idx = log2int(size_pow2) - MIN_CACHED_BLOCK_POW2_SIZE;
 
         auto& cache_entry = g_mem_cache[idx];
         void* cached_ptr = nullptr;
@@ -154,7 +154,7 @@ namespace
     bool cache_recycle(void* ptr, std::size_t size_pow2)
     {
         // recycle the block if possible
-        const int idx = log2int(size_pow2) - MIN_CACHED_BLOCK_POW2_SIZE - 1;
+        const int idx = log2int(size_pow2) - MIN_CACHED_BLOCK_POW2_SIZE;
 
         auto& cache_entry = g_mem_cache[idx];
 
@@ -283,7 +283,8 @@ void* operator new(std::size_t size)
 // ------------------------------------------------------------
 void operator delete(void* ptr) noexcept
 {
-    // std::cout << "[delete] unsized\n";
+    // Intentionally bypass cache: unsized delete does not know the exact block size.
+    // Modern C++ containers and value types typically use sized delete in practice.
     std::free(ptr);
 }
 
@@ -308,7 +309,8 @@ void* operator new[](std::size_t size)
 
 void operator delete[](void* ptr) noexcept
 {
-    // std::cout << "[delete[]] unsized\n";
+    // Intentionally bypass cache: unsized delete[] does not know the exact block size.
+    // Modern C++ containers and value types typically use sized delete[] in practice.
     std::free(ptr);
 }
 
