@@ -138,6 +138,23 @@ namespace tools
          *
          * @param elem The element to be emplaced into the ring vector.
          */
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        template <typename... Args>
+            requires std::is_constructible_v<T, Args...>
+        bool emplace(Args&&... args)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.emplace(std::forward<Args>(args)...);
+        }
+
+        template <typename... Args>
+            requires std::is_constructible_v<T, Args...>
+        bool emplace_overwrite(Args&&... args)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.emplace_overwrite(std::forward<Args>(args)...);
+        }
+#else
         template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
         bool emplace(Args&&... args)
         {
@@ -151,6 +168,7 @@ namespace tools
             std::unique_lock guard(m_mutex);
             return m_ring_vector.emplace_overwrite(std::forward<Args>(args)...);
         }
+#endif
 
         // C++17: batch insertion via iterator pair
         /**
@@ -243,10 +261,7 @@ namespace tools
         void pop()
         {
             std::unique_lock guard(m_mutex);
-            if (!m_ring_vector.empty())
-            {
-                m_ring_vector.pop();
-            }
+            m_ring_vector.pop();
         }
 
         /**
@@ -319,6 +334,12 @@ namespace tools
         {
             std::shared_lock guard(m_mutex);
             return m_ring_vector;
+        }
+
+        void clear()
+        {
+            std::unique_lock guard(m_mutex);
+            m_ring_vector.clear();
         }
 
         /**

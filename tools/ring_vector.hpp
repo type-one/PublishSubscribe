@@ -215,6 +215,21 @@ namespace tools
          *
          * @param elem The element to be inserted into the ring vector.
          */
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        template <typename... Args>
+            requires std::is_constructible_v<T, Args...>
+        bool emplace(Args&&... args)
+        {
+            return write_value(T(std::forward<Args>(args)...), overflow_policy::reject) != write_status::rejected;
+        }
+
+        template <typename... Args>
+            requires std::is_constructible_v<T, Args...>
+        bool emplace_overwrite(Args&&... args)
+        {
+            return write_value(T(std::forward<Args>(args)...), overflow_policy::overwrite) == write_status::overwritten;
+        }
+#else
         template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
         bool emplace(Args&&... args)
         {
@@ -226,6 +241,7 @@ namespace tools
         {
             return write_value(T(std::forward<Args>(args)...), overflow_policy::overwrite) == write_status::overwritten;
         }
+#endif
 
         /**
          * @brief Removes the oldest element from the ring buffer.

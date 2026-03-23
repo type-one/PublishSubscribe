@@ -74,6 +74,11 @@ namespace tools
     public:
         using push_range_overwrite_result = typename ring_buffer<T, Capacity>::push_range_overwrite_result;
 
+        struct thread_safe
+        {
+            static constexpr bool value = true;
+        };
+
         sync_ring_buffer() = default;
         ~sync_ring_buffer() = default;
 
@@ -178,10 +183,7 @@ namespace tools
         void pop()
         {
             std::unique_lock guard(m_mutex);
-            if (!m_ring_buffer.empty())
-            {
-                m_ring_buffer.pop();
-            }
+            m_ring_buffer.pop();
         }
 
         // C++17: iterator-pair batch pop under one lock
@@ -211,6 +213,18 @@ namespace tools
                 m_ring_buffer.pop();
             }
             return item;
+        }
+
+        ring_buffer<T, Capacity> snapshot() const
+        {
+            std::shared_lock guard(m_mutex);
+            return m_ring_buffer;
+        }
+
+        void clear()
+        {
+            std::unique_lock guard(m_mutex);
+            m_ring_buffer.clear();
         }
 
         std::optional<T> front() const

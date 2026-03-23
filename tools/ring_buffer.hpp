@@ -65,12 +65,17 @@ namespace tools
     class ring_buffer
     {
     public:
-        static_assert(Capacity > 1U, "ring_buffer Capacity must be greater than 1");
+        static_assert(Capacity > 0U, "ring_buffer Capacity must be greater than 0");
 
         struct push_range_overwrite_result
         {
             std::size_t inserted = 0U;
             std::size_t overwritten = 0U;
+        };
+
+        struct thread_safe
+        {
+            static constexpr bool value = false;
         };
 
         ring_buffer() = default;
@@ -247,8 +252,11 @@ namespace tools
 
         void pop()
         {
-            m_pop_index = next_index(m_pop_index);
-            --m_size;
+            if (!empty())
+            {
+                m_pop_index = next_index(m_pop_index);
+                --m_size;
+            }
         }
 
         // C++17: iterator-pair batch pop that stops when the ring buffer is empty
@@ -287,6 +295,14 @@ namespace tools
         }
 #endif
 
+        void clear()
+        {
+            m_push_index = 0U;
+            m_pop_index = 0U;
+            m_last_index = 0U;
+            m_size = 0U;
+        }
+
         T front() const
         {
             return m_ring_buffer[m_pop_index];
@@ -299,12 +315,12 @@ namespace tools
 
         [[nodiscard]] bool empty() const
         {
-            return m_push_index == m_pop_index;
+            return m_size == 0U;
         }
 
         [[nodiscard]] bool full() const
         {
-            return next_index(m_push_index) == m_pop_index;
+            return m_size >= Capacity;
         }
 
         [[nodiscard]] std::size_t size() const
