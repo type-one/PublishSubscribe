@@ -43,6 +43,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <iterator>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -66,6 +67,12 @@ namespace tools
     class ring_vector
     {
     public:
+        struct push_range_overwrite_result
+        {
+            std::size_t inserted = 0U;
+            std::size_t overwritten = 0U;
+        };
+
         struct thread_safe
         {
             static constexpr bool value = false;
@@ -175,17 +182,9 @@ namespace tools
          *
          * @param elem The element to be pushed into the ring vector.
          */
-        void push(const T& elem)
+        bool push(const T& elem)
         {
-            m_ring_vector[m_push_index] = elem;
-            m_last_index = m_push_index;
-            m_push_index = next_index(m_push_index);
-            ++m_size;
-            if (m_size > m_capacity)
-            {
-                // first entry is overwritten
-                m_pop_index = next_index(m_pop_index);
-            }
+            return write_value(elem, overflow_policy::reject) != write_status::rejected;
         }
 
         /**
@@ -193,17 +192,22 @@ namespace tools
          *
          * @param elem The element to be moved into the ring vector.
          */
-        void push(T&& elem)
+        bool push(T&& elem)
         {
-            m_ring_vector[m_push_index] = std::move(elem);
-            m_last_index = m_push_index;
-            m_push_index = next_index(m_push_index);
-            ++m_size;
-            if (m_size > m_capacity)
-            {
-                // first entry is overwritten
-                m_pop_index = next_index(m_pop_index);
-            }
+            return write_value(std::move(elem), overflow_policy::reject) != write_status::rejected;
+        }
+
+        // overwrite variant: when full, evicts oldest entry and inserts the new one.
+        // returns true if an old value was overwritten, false if inserted without eviction.
+        bool push_overwrite(const T& elem)
+        {
+            return write_value(elem, overflow_policy::overwrite) == write_status::overwritten;
+        }
+
+        // rvalue overload: overwrite behavior
+        bool push_overwrite(T&& elem)
+        {
+            return write_value(std::move(elem), overflow_policy::overwrite) == write_status::overwritten;
         }
 
         /**
@@ -211,18 +215,16 @@ namespace tools
          *
          * @param elem The element to be inserted into the ring vector.
          */
-        template <typename U>
-        void emplace(U&& elem)
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        bool emplace(Args&&... args)
         {
-            m_ring_vector[m_push_index] = std::forward<U>(elem);
-            m_last_index = m_push_index;
-            m_push_index = next_index(m_push_index);
-            ++m_size;
-            if (m_size > m_capacity)
-            {
-                // first entry is overwritten
-                m_pop_index = next_index(m_pop_index);
-            }
+            return write_value(T(std::forward<Args>(args)...), overflow_policy::reject) != write_status::rejected;
+        }
+
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        bool emplace_overwrite(Args&&... args)
+        {
+            return write_value(T(std::forward<Args>(args)...), overflow_policy::overwrite) == write_status::overwritten;
         }
 
         /**
@@ -338,10 +340,29 @@ namespace tools
             std::size_t inserted = 0;
             for (; first != last && !full(); ++first)
             {
-                push(*first);
+                if (!push(*first))
+                {
+                    break;
+                }
+
                 ++inserted;
             }
             return inserted;
+        }
+
+        // C++17: batch insertion with overwrite behavior
+        template <typename InputIt>
+        push_range_overwrite_result push_range_overwrite(InputIt first, InputIt last)
+        {
+            push_range_overwrite_result result {};
+            for (; first != last; ++first)
+            {
+                const bool overwritten = push_overwrite(*first);
+                ++result.inserted;
+                result.overwritten += overwritten ? 1U : 0U;
+            }
+
+            return result;
         }
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -361,12 +382,27 @@ namespace tools
             std::size_t inserted = 0;
             for (auto&& elem : range)
             {
-                if (full())
+                if (!push(std::forward<decltype(elem)>(elem)))
                     break;
-                push(std::forward<decltype(elem)>(elem));
+
                 ++inserted;
             }
             return inserted;
+        }
+
+        template <typename Range>
+            requires std::ranges::input_range<Range> && std::is_assignable_v<T&, std::ranges::range_reference_t<Range>>
+        push_range_overwrite_result push_range_overwrite(Range&& range)
+        {
+            push_range_overwrite_result result {};
+            for (auto&& elem : range)
+            {
+                const bool overwritten = push_overwrite(std::forward<decltype(elem)>(elem));
+                ++result.inserted;
+                result.overwritten += overwritten ? 1U : 0U;
+            }
+
+            return result;
         }
 #endif
 
@@ -494,6 +530,52 @@ namespace tools
         }
 
     private:
+        enum class overflow_policy
+        {
+            reject,
+            overwrite
+        };
+
+        enum class write_status
+        {
+            rejected,
+            inserted,
+            overwritten
+        };
+
+        template <typename U>
+        write_status write_value(U&& elem, overflow_policy policy)
+        {
+            if (m_capacity == 0U)
+            {
+                return write_status::rejected;
+            }
+
+            bool overwritten = false;
+            if (full())
+            {
+                if (policy == overflow_policy::reject)
+                {
+                    return write_status::rejected;
+                }
+
+                // keep most recent history by evicting the oldest item
+                m_pop_index = next_index(m_pop_index);
+                if (m_size > 0U)
+                {
+                    --m_size;
+                }
+                overwritten = true;
+            }
+
+            m_ring_vector[m_push_index] = std::forward<U>(elem);
+            m_last_index = m_push_index;
+            m_push_index = next_index(m_push_index);
+            ++m_size;
+
+            return overwritten ? write_status::overwritten : write_status::inserted;
+        }
+
         /**
          * @brief Calculates the next index in a circular buffer.
          *

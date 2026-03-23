@@ -81,6 +81,29 @@ void drain_sync_ring_buffer(tools::sync_ring_buffer<T, Capacity>& queue)
     }
 }
 
+template <typename T>
+void drain_ring_vector(tools::ring_vector<T>& vec)
+{
+    while (!vec.empty())
+    {
+        std::cout << "  " << vec.front() << std::endl;
+        vec.pop();
+    }
+}
+
+template <typename T>
+void drain_sync_ring_vector(tools::sync_ring_vector<T>& vec)
+{
+    while (!vec.empty())
+    {
+        auto value = vec.front_pop();
+        if (value.has_value())
+        {
+            std::cout << "  " << *value << std::endl;
+        }
+    }
+}
+
 //--------------------------------------------------------------------------------------------------------------------------------
 
 void test_ring_buffer()
@@ -352,11 +375,7 @@ void test_ring_vector()
     std::cout << "front after emplace/push: " << item << std::endl;
 
     std::cout << "drain initial content:" << std::endl;
-    while (!str_vec.empty())
-    {
-        std::cout << "  " << str_vec.front() << std::endl;
-        str_vec.pop();
-    }
+    drain_ring_vector(str_vec);
 
     // C++17: push_range via iterator-pair insertion
     {
@@ -377,11 +396,40 @@ void test_ring_vector()
     }
 
     std::cout << "drain iterator-pair batch:" << std::endl;
-    while (!str_vec.empty())
-    {
-        std::cout << "  " << str_vec.front() << std::endl;
-        str_vec.pop();
-    }
+    drain_ring_vector(str_vec);
+
+    // reject-on-full mode (single push)
+    tools::ring_vector<std::string> reject_vec(4U);
+    reject_vec.push("R1");
+    reject_vec.push("R2");
+    reject_vec.push("R3");
+    reject_vec.push("R4");
+    const bool reject_single_ok = reject_vec.push("R5");
+    std::cout << "reject mode single push accepted extra item: " << std::boolalpha << reject_single_ok
+              << std::noboolalpha << std::endl;
+    std::cout << "reject mode contents:" << std::endl;
+    drain_ring_vector(reject_vec);
+
+    // overwrite-on-full mode (single push)
+    tools::ring_vector<std::string> overwrite_vec(4U);
+    overwrite_vec.push("O1");
+    overwrite_vec.push("O2");
+    overwrite_vec.push("O3");
+    overwrite_vec.push("O4");
+    const bool overwrite_single_happened = overwrite_vec.push_overwrite("O5");
+    std::cout << "overwrite mode single push evicted oldest: " << std::boolalpha << overwrite_single_happened
+              << std::noboolalpha << std::endl;
+    std::cout << "overwrite mode contents (recent history):" << std::endl;
+    drain_ring_vector(overwrite_vec);
+
+    // overwrite-on-full mode (push_range)
+    tools::ring_vector<std::string> overwrite_range_vec(4U);
+    std::vector<std::string> overwrite_input = { "W1", "W2", "W3", "W4", "W5", "W6" };
+    const auto overwrite_result = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
+    std::cout << "overwrite range inserted=" << overwrite_result.inserted
+              << " overwritten=" << overwrite_result.overwritten << std::endl;
+    std::cout << "overwrite range contents (recent history):" << std::endl;
+    drain_ring_vector(overwrite_range_vec);
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
     // C++20: push_range via ranges concept
@@ -404,11 +452,7 @@ void test_ring_vector()
     }
 
     std::cout << "drain C++20 span batch:" << std::endl;
-    while (!str_vec.empty())
-    {
-        std::cout << "  " << str_vec.front() << std::endl;
-        str_vec.pop();
-    }
+    drain_ring_vector(str_vec);
 #endif
 
     // Resize test: expand capacity and add more items
@@ -461,14 +505,7 @@ void test_sync_ring_vector()
 
     // drain initial content
     std::cout << "drain initial content:" << std::endl;
-    while (!str_vec.empty())
-    {
-        auto val = str_vec.front_pop();
-        if (val.has_value())
-        {
-            std::cout << "  " << *val << std::endl;
-        }
-    }
+    drain_sync_ring_vector(str_vec);
 
     // C++17: push_range via iterator-pair
     {
@@ -489,14 +526,40 @@ void test_sync_ring_vector()
     }
 
     std::cout << "drain iterator-pair batch:" << std::endl;
-    while (!str_vec.empty())
-    {
-        auto val = str_vec.front_pop();
-        if (val.has_value())
-        {
-            std::cout << "  " << *val << std::endl;
-        }
-    }
+    drain_sync_ring_vector(str_vec);
+
+    // reject-on-full mode (single push)
+    tools::sync_ring_vector<std::string> reject_vec(4U);
+    reject_vec.push("R1");
+    reject_vec.push("R2");
+    reject_vec.push("R3");
+    reject_vec.push("R4");
+    const bool reject_single_ok = reject_vec.push("R5");
+    std::cout << "sync reject mode single push accepted extra item: " << std::boolalpha << reject_single_ok
+              << std::noboolalpha << std::endl;
+    std::cout << "sync reject mode contents:" << std::endl;
+    drain_sync_ring_vector(reject_vec);
+
+    // overwrite-on-full mode (single push)
+    tools::sync_ring_vector<std::string> overwrite_vec(4U);
+    overwrite_vec.push("O1");
+    overwrite_vec.push("O2");
+    overwrite_vec.push("O3");
+    overwrite_vec.push("O4");
+    const bool overwrite_single_happened = overwrite_vec.push_overwrite("O5");
+    std::cout << "sync overwrite mode single push evicted oldest: " << std::boolalpha << overwrite_single_happened
+              << std::noboolalpha << std::endl;
+    std::cout << "sync overwrite mode contents (recent history):" << std::endl;
+    drain_sync_ring_vector(overwrite_vec);
+
+    // overwrite-on-full mode (push_range)
+    tools::sync_ring_vector<std::string> overwrite_range_vec(4U);
+    std::vector<std::string> overwrite_input = { "W1", "W2", "W3", "W4", "W5", "W6" };
+    const auto overwrite_result = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
+    std::cout << "sync overwrite range inserted=" << overwrite_result.inserted
+              << " overwritten=" << overwrite_result.overwritten << std::endl;
+    std::cout << "sync overwrite range contents (recent history):" << std::endl;
+    drain_sync_ring_vector(overwrite_range_vec);
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
     // C++20: push_range via ranges concept
@@ -519,14 +582,7 @@ void test_sync_ring_vector()
     }
 
     std::cout << "drain C++20 span batch:" << std::endl;
-    while (!str_vec.empty())
-    {
-        auto val = str_vec.front_pop();
-        if (val.has_value())
-        {
-            std::cout << "  " << *val << std::endl;
-        }
-    }
+    drain_sync_ring_vector(str_vec);
 #endif
 }
 

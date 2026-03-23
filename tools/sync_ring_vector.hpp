@@ -45,6 +45,7 @@
 #include <mutex>
 #include <optional>
 #include <shared_mutex>
+#include <type_traits>
 #include <utility>
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -69,6 +70,8 @@ namespace tools
     class sync_ring_vector : public non_copyable // NOLINT inherits from non copyable and non movable class
     {
     public:
+        using push_range_overwrite_result = typename ring_vector<T>::push_range_overwrite_result;
+
         struct thread_safe
         {
             static constexpr bool value = true;
@@ -94,10 +97,10 @@ namespace tools
          *
          * @param elem The element to be pushed into the ring vector.
          */
-        void push(const T& elem)
+        bool push(const T& elem)
         {
             std::unique_lock guard(m_mutex);
-            m_ring_vector.push(elem);
+            return m_ring_vector.push(elem);
         }
 
         /**
@@ -107,10 +110,24 @@ namespace tools
          *
          * @param elem The element to be moved into the ring vector.
          */
-        void push(T&& elem)
+        bool push(T&& elem)
         {
             std::unique_lock guard(m_mutex);
-            m_ring_vector.push(std::move(elem));
+            return m_ring_vector.push(std::move(elem));
+        }
+
+        // overwrite variant: when full, evicts oldest entry and inserts the new one
+        bool push_overwrite(const T& elem)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.push_overwrite(elem);
+        }
+
+        // rvalue overload: overwrite behavior
+        bool push_overwrite(T&& elem)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.push_overwrite(std::move(elem));
         }
 
         /**
@@ -121,11 +138,18 @@ namespace tools
          *
          * @param elem The element to be emplaced into the ring vector.
          */
-        template <typename U>
-        void emplace(U&& elem)
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        bool emplace(Args&&... args)
         {
             std::unique_lock guard(m_mutex);
-            m_ring_vector.emplace(std::forward<U>(elem));
+            return m_ring_vector.emplace(std::forward<Args>(args)...);
+        }
+
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        bool emplace_overwrite(Args&&... args)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.emplace_overwrite(std::forward<Args>(args)...);
         }
 
         // C++17: batch insertion via iterator pair
@@ -145,6 +169,14 @@ namespace tools
             return m_ring_vector.push_range(first, last);
         }
 
+        // C++17: batch insertion with overwrite behavior
+        template <typename InputIt>
+        push_range_overwrite_result push_range_overwrite(InputIt first, InputIt last)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.push_range_overwrite(first, last);
+        }
+
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
         // C++20: batch insertion via range concept
         /**
@@ -161,6 +193,14 @@ namespace tools
         {
             std::unique_lock guard(m_mutex);
             return m_ring_vector.push_range(std::forward<Range>(range));
+        }
+
+        template <typename Range>
+            requires std::ranges::input_range<Range>
+        push_range_overwrite_result push_range_overwrite(Range&& range)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_vector.push_range_overwrite(std::forward<Range>(range));
         }
 #endif
 
