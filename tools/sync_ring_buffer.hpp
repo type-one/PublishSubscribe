@@ -72,20 +72,36 @@ namespace tools
     class sync_ring_buffer : public non_copyable // NOLINT inherits from non copyable/non movable
     {
     public:
+        using push_range_overwrite_result = typename ring_buffer<T, Capacity>::push_range_overwrite_result;
+
         sync_ring_buffer() = default;
         ~sync_ring_buffer() = default;
 
-        void push(const T& elem)
+        bool push(const T& elem)
         {
             std::unique_lock guard(m_mutex);
-            m_ring_buffer.push(elem);
+            return m_ring_buffer.push(elem);
         }
 
         // rvalue overload: moves an already-constructed element into the buffer
-        void push(T&& elem)
+        bool push(T&& elem)
         {
             std::unique_lock guard(m_mutex);
-            m_ring_buffer.push(std::move(elem));
+            return m_ring_buffer.push(std::move(elem));
+        }
+
+        // overwrite variant: when full, evicts oldest entry and inserts the new one
+        bool push_overwrite(const T& elem)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.push_overwrite(elem);
+        }
+
+        // rvalue overload: overwrite behavior
+        bool push_overwrite(T&& elem)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.push_overwrite(std::move(elem));
         }
 
         // perfect forwarding: constructs T in-place from arbitrary constructor arguments
@@ -93,18 +109,33 @@ namespace tools
         // C++20: requires clause constrains the template to valid T constructors
         template <typename... Args>
             requires std::is_constructible_v<T, Args...>
-        void emplace(Args&&... args)
+        bool emplace(Args&&... args)
         {
             std::unique_lock guard(m_mutex);
-            m_ring_buffer.emplace(std::forward<Args>(args)...);
+            return m_ring_buffer.emplace(std::forward<Args>(args)...);
+        }
+
+        template <typename... Args>
+            requires std::is_constructible_v<T, Args...>
+        bool emplace_overwrite(Args&&... args)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.emplace_overwrite(std::forward<Args>(args)...);
         }
 #else
         // C++17: std::enable_if_t provides equivalent SFINAE constraint
         template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
-        void emplace(Args&&... args)
+        bool emplace(Args&&... args)
         {
             std::unique_lock guard(m_mutex);
-            m_ring_buffer.emplace(std::forward<Args>(args)...);
+            return m_ring_buffer.emplace(std::forward<Args>(args)...);
+        }
+
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        bool emplace_overwrite(Args&&... args)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.emplace_overwrite(std::forward<Args>(args)...);
         }
 #endif
 
@@ -116,6 +147,14 @@ namespace tools
             return m_ring_buffer.push_range(first, last);
         }
 
+        // C++17: iterator-pair batch push with overwrite behavior under one lock
+        template <typename InputIt>
+        push_range_overwrite_result push_range_overwrite(InputIt first, InputIt last)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.push_range_overwrite(first, last);
+        }
+
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
         // C++20: range batch push under one lock
         template <std::ranges::input_range Range>
@@ -124,6 +163,15 @@ namespace tools
         {
             std::unique_lock guard(m_mutex);
             return m_ring_buffer.push_range(std::forward<Range>(range));
+        }
+
+        // C++20: range batch push with overwrite behavior under one lock
+        template <std::ranges::input_range Range>
+            requires std::is_constructible_v<T, std::ranges::range_reference_t<Range>>
+        push_range_overwrite_result push_range_overwrite(Range&& range)
+        {
+            std::unique_lock guard(m_mutex);
+            return m_ring_buffer.push_range_overwrite(std::forward<Range>(range));
         }
 #endif
 

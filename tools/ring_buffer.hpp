@@ -65,6 +65,14 @@ namespace tools
     class ring_buffer
     {
     public:
+        static_assert(Capacity > 1U, "ring_buffer Capacity must be greater than 1");
+
+        struct push_range_overwrite_result
+        {
+            std::size_t inserted = 0U;
+            std::size_t overwritten = 0U;
+        };
+
         ring_buffer() = default;
         ~ring_buffer() = default;
 
@@ -114,21 +122,28 @@ namespace tools
             return *this;
         }
 
-        void push(const T& elem)
+        bool push(const T& elem)
         {
-            m_ring_buffer[m_push_index] = elem;
-            m_last_index = m_push_index;
-            m_push_index = next_index(m_push_index);
-            ++m_size;
+            return write_value(elem, overflow_policy::reject) != write_status::rejected;
         }
 
         // rvalue overload: moves an already-constructed element into the buffer
-        void push(T&& elem)
+        bool push(T&& elem)
         {
-            m_ring_buffer[m_push_index] = std::move(elem);
-            m_last_index = m_push_index;
-            m_push_index = next_index(m_push_index);
-            ++m_size;
+            return write_value(std::move(elem), overflow_policy::reject) != write_status::rejected;
+        }
+
+        // overwrite variant: when full, evicts oldest entry and inserts the new one.
+        // returns true if an old value was overwritten, false if inserted without eviction.
+        bool push_overwrite(const T& elem)
+        {
+            return write_value(elem, overflow_policy::overwrite) == write_status::overwritten;
+        }
+
+        // rvalue overload: overwrite behavior
+        bool push_overwrite(T&& elem)
+        {
+            return write_value(std::move(elem), overflow_policy::overwrite) == write_status::overwritten;
         }
 
         // perfect forwarding: constructs T in-place from arbitrary constructor arguments
@@ -136,22 +151,29 @@ namespace tools
         // C++20: requires clause constrains the template to valid T constructors
         template <typename... Args>
             requires std::is_constructible_v<T, Args...>
-        void emplace(Args&&... args)
+        bool emplace(Args&&... args)
         {
-            m_ring_buffer[m_push_index] = T(std::forward<Args>(args)...);
-            m_last_index = m_push_index;
-            m_push_index = next_index(m_push_index);
-            ++m_size;
+            return write_value(T(std::forward<Args>(args)...), overflow_policy::reject) != write_status::rejected;
+        }
+
+        template <typename... Args>
+            requires std::is_constructible_v<T, Args...>
+        bool emplace_overwrite(Args&&... args)
+        {
+            return write_value(T(std::forward<Args>(args)...), overflow_policy::overwrite) == write_status::overwritten;
         }
 #else
         // C++17: std::enable_if_t provides equivalent SFINAE constraint
         template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
-        void emplace(Args&&... args)
+        bool emplace(Args&&... args)
         {
-            m_ring_buffer[m_push_index] = T(std::forward<Args>(args)...);
-            m_last_index = m_push_index;
-            m_push_index = next_index(m_push_index);
-            ++m_size;
+            return write_value(T(std::forward<Args>(args)...), overflow_policy::reject) != write_status::rejected;
+        }
+
+        template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
+        bool emplace_overwrite(Args&&... args)
+        {
+            return write_value(T(std::forward<Args>(args)...), overflow_policy::overwrite) == write_status::overwritten;
         }
 #endif
 
@@ -162,10 +184,29 @@ namespace tools
             std::size_t inserted = 0U;
             for (; (first != last) && !full(); ++first)
             {
-                emplace(*first);
+                if (!push(*first))
+                {
+                    break;
+                }
+
                 ++inserted;
             }
             return inserted;
+        }
+
+        // C++17: iterator-pair batch push with overwrite behavior
+        template <typename InputIt>
+        push_range_overwrite_result push_range_overwrite(InputIt first, InputIt last)
+        {
+            push_range_overwrite_result result {};
+            for (; first != last; ++first)
+            {
+                const bool overwritten = push_overwrite(*first);
+                ++result.inserted;
+                result.overwritten += overwritten ? 1U : 0U;
+            }
+
+            return result;
         }
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -177,15 +218,30 @@ namespace tools
             std::size_t inserted = 0U;
             for (auto&& elem : range)
             {
-                if (full())
+                if (!push(std::forward<decltype(elem)>(elem)))
                 {
                     break;
                 }
 
-                emplace(std::forward<decltype(elem)>(elem));
                 ++inserted;
             }
             return inserted;
+        }
+
+        // C++20: range batch push with overwrite behavior
+        template <std::ranges::input_range Range>
+            requires std::is_constructible_v<T, std::ranges::range_reference_t<Range>>
+        push_range_overwrite_result push_range_overwrite(Range&& range)
+        {
+            push_range_overwrite_result result {};
+            for (auto&& elem : range)
+            {
+                const bool overwritten = push_overwrite(std::forward<decltype(elem)>(elem));
+                ++result.inserted;
+                result.overwritten += overwritten ? 1U : 0U;
+            }
+
+            return result;
         }
 #endif
 
@@ -262,6 +318,48 @@ namespace tools
         }
 
     private:
+        enum class overflow_policy
+        {
+            reject,
+            overwrite
+        };
+
+        enum class write_status
+        {
+            rejected,
+            inserted,
+            overwritten
+        };
+
+        template <typename U>
+        write_status write_value(U&& elem, overflow_policy policy)
+        {
+            bool overwritten = false;
+
+            if (full())
+            {
+                if (policy == overflow_policy::reject)
+                {
+                    return write_status::rejected;
+                }
+
+                // keep most recent history by evicting the oldest item
+                m_pop_index = next_index(m_pop_index);
+                if (m_size > 0U)
+                {
+                    --m_size;
+                }
+                overwritten = true;
+            }
+
+            m_ring_buffer[m_push_index] = std::forward<U>(elem);
+            m_last_index = m_push_index;
+            m_push_index = next_index(m_push_index);
+            ++m_size;
+
+            return overwritten ? write_status::overwritten : write_status::inserted;
+        }
+
         [[nodiscard]] constexpr std::size_t next_index(std::size_t index) const
         {
             return ((index + 1U) % Capacity);

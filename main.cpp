@@ -58,6 +58,31 @@
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
+template <typename T, std::size_t Capacity>
+void drain_ring_buffer(tools::ring_buffer<T, Capacity>& queue)
+{
+    while (!queue.empty())
+    {
+        std::cout << "  " << queue.front() << std::endl;
+        queue.pop();
+    }
+}
+
+template <typename T, std::size_t Capacity>
+void drain_sync_ring_buffer(tools::sync_ring_buffer<T, Capacity>& queue)
+{
+    while (!queue.empty())
+    {
+        auto value = queue.front_pop();
+        if (value.has_value())
+        {
+            std::cout << "  " << *value << std::endl;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
 void test_ring_buffer()
 {
     std::cout << "-- ring buffer --" << std::endl;
@@ -75,11 +100,7 @@ void test_ring_buffer()
     std::cout << "front after emplace/push: " << item << std::endl;
 
     std::cout << "drain initial content:" << std::endl;
-    while (!str_queue.empty())
-    {
-        std::cout << "  " << str_queue.front() << std::endl;
-        str_queue.pop();
-    }
+    drain_ring_buffer(str_queue);
 
     // push_range (C++17): iterator-pair insertion
     std::vector<std::string> batch = { "alpha", "beta", "gamma" };
@@ -96,11 +117,7 @@ void test_ring_buffer()
     }
 
     std::cout << "drain iterator-pair batch:" << std::endl;
-    while (!str_queue.empty())
-    {
-        std::cout << "  " << str_queue.front() << std::endl;
-        str_queue.pop();
-    }
+    drain_ring_buffer(str_queue);
 
     // capacity-bound behavior: insertion stops when full
     tools::ring_buffer<std::string, 4U> small_queue;
@@ -111,11 +128,39 @@ void test_ring_buffer()
     std::cout << "small queue full: " << std::boolalpha << small_queue.full() << std::noboolalpha << std::endl;
 
     std::cout << "drain capacity-limited buffer:" << std::endl;
-    while (!small_queue.empty())
-    {
-        std::cout << "  " << small_queue.front() << std::endl;
-        small_queue.pop();
-    }
+    drain_ring_buffer(small_queue);
+
+    // reject-on-full mode (single push)
+    tools::ring_buffer<std::string, 4U> reject_queue;
+    reject_queue.push("R1");
+    reject_queue.push("R2");
+    reject_queue.push("R3");
+    const bool reject_single_ok = reject_queue.push("R4");
+    std::cout << "reject mode single push accepted extra item: " << std::boolalpha << reject_single_ok
+              << std::noboolalpha << std::endl;
+    std::cout << "reject mode contents:" << std::endl;
+    drain_ring_buffer(reject_queue);
+
+    // overwrite-on-full mode (single push)
+    tools::ring_buffer<std::string, 4U> overwrite_queue;
+    overwrite_queue.push("O1");
+    overwrite_queue.push("O2");
+    overwrite_queue.push("O3");
+    const bool overwrite_single_happened = overwrite_queue.push_overwrite("O4");
+    std::cout << "overwrite mode single push evicted oldest: " << std::boolalpha << overwrite_single_happened
+              << std::noboolalpha << std::endl;
+    std::cout << "overwrite mode contents (recent history):" << std::endl;
+    drain_ring_buffer(overwrite_queue);
+
+    // overwrite-on-full mode (push_range)
+    tools::ring_buffer<std::string, 4U> overwrite_range_queue;
+    std::vector<std::string> overwrite_input = { "W1", "W2", "W3", "W4", "W5", "W6" };
+    const auto overwrite_result
+        = overwrite_range_queue.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
+    std::cout << "overwrite range inserted=" << overwrite_result.inserted
+              << " overwritten=" << overwrite_result.overwritten << std::endl;
+    std::cout << "overwrite range contents (recent history):" << std::endl;
+    drain_ring_buffer(overwrite_range_queue);
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
     // push_range (C++20): range overload with a container
@@ -133,11 +178,7 @@ void test_ring_buffer()
     }
 
     std::cout << "drain C++20 container range:" << std::endl;
-    while (!str_queue.empty())
-    {
-        std::cout << "  " << str_queue.front() << std::endl;
-        str_queue.pop();
-    }
+    drain_ring_buffer(str_queue);
 
     // push_range (C++20): range overload with a filtered view
     std::vector<std::string> mixed = { "keep_1", "skip", "keep_2", "no" };
@@ -146,11 +187,7 @@ void test_ring_buffer()
     std::cout << "inserted with C++20 filtered view: " << inserted_view << std::endl;
 
     std::cout << "drain C++20 filtered view:" << std::endl;
-    while (!str_queue.empty())
-    {
-        std::cout << "  " << str_queue.front() << std::endl;
-        str_queue.pop();
-    }
+    drain_ring_buffer(str_queue);
 #endif
 }
 
@@ -206,14 +243,7 @@ void test_sync_ring_buffer()
     str_queue.push(std::move(moved));
 
     std::cout << "drain initial sync content:" << std::endl;
-    while (!str_queue.empty())
-    {
-        auto value = str_queue.front_pop();
-        if (value.has_value())
-        {
-            std::cout << "  " << *value << std::endl;
-        }
-    }
+    drain_sync_ring_buffer(str_queue);
 
     // push_range (C++17): iterator-pair insertion under one lock
     std::vector<std::string> batch = { "alpha", "beta", "gamma" };
@@ -230,14 +260,7 @@ void test_sync_ring_buffer()
     }
 
     std::cout << "drain iterator-pair sync batch:" << std::endl;
-    while (!str_queue.empty())
-    {
-        auto value = str_queue.front_pop();
-        if (value.has_value())
-        {
-            std::cout << "  " << *value << std::endl;
-        }
-    }
+    drain_sync_ring_buffer(str_queue);
 
     // capacity-bound behavior: insertion stops when full
     tools::sync_ring_buffer<std::string, 4U> small_queue;
@@ -248,14 +271,39 @@ void test_sync_ring_buffer()
     std::cout << "small sync queue full: " << std::boolalpha << small_queue.full() << std::noboolalpha << std::endl;
 
     std::cout << "drain capacity-limited sync buffer:" << std::endl;
-    while (!small_queue.empty())
-    {
-        auto value = small_queue.front_pop();
-        if (value.has_value())
-        {
-            std::cout << "  " << *value << std::endl;
-        }
-    }
+    drain_sync_ring_buffer(small_queue);
+
+    // reject-on-full mode (single push)
+    tools::sync_ring_buffer<std::string, 4U> reject_queue;
+    reject_queue.push("R1");
+    reject_queue.push("R2");
+    reject_queue.push("R3");
+    const bool reject_single_ok = reject_queue.push("R4");
+    std::cout << "sync reject mode single push accepted extra item: " << std::boolalpha << reject_single_ok
+              << std::noboolalpha << std::endl;
+    std::cout << "sync reject mode contents:" << std::endl;
+    drain_sync_ring_buffer(reject_queue);
+
+    // overwrite-on-full mode (single push)
+    tools::sync_ring_buffer<std::string, 4U> overwrite_queue;
+    overwrite_queue.push("O1");
+    overwrite_queue.push("O2");
+    overwrite_queue.push("O3");
+    const bool overwrite_single_happened = overwrite_queue.push_overwrite("O4");
+    std::cout << "sync overwrite mode single push evicted oldest: " << std::boolalpha << overwrite_single_happened
+              << std::noboolalpha << std::endl;
+    std::cout << "sync overwrite mode contents (recent history):" << std::endl;
+    drain_sync_ring_buffer(overwrite_queue);
+
+    // overwrite-on-full mode (push_range)
+    tools::sync_ring_buffer<std::string, 4U> overwrite_range_queue;
+    std::vector<std::string> overwrite_input = { "W1", "W2", "W3", "W4", "W5", "W6" };
+    const auto overwrite_result
+        = overwrite_range_queue.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
+    std::cout << "sync overwrite range inserted=" << overwrite_result.inserted
+              << " overwritten=" << overwrite_result.overwritten << std::endl;
+    std::cout << "sync overwrite range contents (recent history):" << std::endl;
+    drain_sync_ring_buffer(overwrite_range_queue);
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
     // push_range (C++20): range overload with a container
@@ -273,14 +321,7 @@ void test_sync_ring_buffer()
     }
 
     std::cout << "drain C++20 container sync range:" << std::endl;
-    while (!str_queue.empty())
-    {
-        auto value = str_queue.front_pop();
-        if (value.has_value())
-        {
-            std::cout << "  " << *value << std::endl;
-        }
-    }
+    drain_sync_ring_buffer(str_queue);
 
     // push_range (C++20): range overload with a filtered view
     std::vector<std::string> mixed = { "keep_1", "skip", "keep_2", "no" };
@@ -289,14 +330,7 @@ void test_sync_ring_buffer()
     std::cout << "inserted with C++20 filtered view: " << inserted_view << std::endl;
 
     std::cout << "drain C++20 filtered sync view:" << std::endl;
-    while (!str_queue.empty())
-    {
-        auto value = str_queue.front_pop();
-        if (value.has_value())
-        {
-            std::cout << "  " << *value << std::endl;
-        }
-    }
+    drain_sync_ring_buffer(str_queue);
 #endif
 }
 
