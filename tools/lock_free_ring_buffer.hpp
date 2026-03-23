@@ -74,10 +74,10 @@ namespace tools
         static_assert(std::is_trivial<T>::value, "T has to be trivial type");
         static_assert(std::is_scalar<T>::value || std::is_pointer<T>::value, "T has to be scalar or pointer");
 
-        struct thread_safe
+        struct spsc_safe
         {
             // Single Producer - Single Consumer only
-            static constexpr bool value = false;
+            static constexpr bool value = true;
         };
 
         lock_free_ring_buffer() = default;
@@ -87,35 +87,24 @@ namespace tools
          * @brief Pushes an element into the ring buffer.
          *
          * This function attempts to push an element into the ring buffer. If the buffer is full,
-         * the function returns false. It handles potential race conditions by checking the indices
-         * and waiting if necessary.
+         * the function returns false. This implementation is lock-free for the supported
+         * single-producer/single-consumer usage model.
          *
          * @param elem The element to be pushed into the ring buffer.
          * @return true if the element was successfully pushed into the buffer, false if the buffer is full.
          */
         bool push(const T& elem)
         {
-            const std::size_t snap_write_idx = m_push_index.load();
-            const std::size_t snap_read_idx = m_pop_index.load();
+            const std::size_t write_idx = m_push_index.load(std::memory_order_relaxed);
+            const std::size_t read_idx = m_pop_index.load(std::memory_order_acquire);
 
-            // is full ?
-            if ((snap_read_idx & ring_buffer_mask) == ((snap_write_idx + 1U) & ring_buffer_mask))
+            if ((write_idx - read_idx) >= ring_buffer_size)
             {
                 return false;
             }
 
-            // getting close or wrap around, risk of race condition
-            if (((snap_write_idx - snap_read_idx) <= 2U) || (snap_write_idx < snap_read_idx))
-            {
-                do
-                {
-                } while (m_reading.load());
-            }
-
-            m_writing.store(true);
-            const std::size_t write_idx = m_push_index.fetch_add(1U);
-            m_ring_buffer.at(write_idx & ring_buffer_mask).store(elem);
-            m_writing.store(false);
+            m_ring_buffer[write_idx & ring_buffer_mask] = elem;
+            m_push_index.store(write_idx + 1U, std::memory_order_release);
 
             return true;
         }
@@ -169,27 +158,16 @@ namespace tools
          */
         bool pop(T& elem)
         {
-            const std::size_t snap_write_idx = m_push_index.load();
-            const std::size_t snap_read_idx = m_pop_index.load();
+            const std::size_t read_idx = m_pop_index.load(std::memory_order_relaxed);
+            const std::size_t write_idx = m_push_index.load(std::memory_order_acquire);
 
-            // is empty ?
-            if ((snap_read_idx & ring_buffer_mask) == (snap_write_idx & ring_buffer_mask))
+            if (read_idx == write_idx)
             {
                 return false;
             }
 
-            // getting close or wrap around, risk of race condition
-            if (((snap_write_idx - snap_read_idx) <= 2U) || (snap_write_idx < snap_read_idx))
-            {
-                do
-                {
-                } while (m_writing.load());
-            }
-
-            m_reading.store(true);
-            const std::size_t read_idx = m_pop_index.fetch_add(1U);
-            elem = m_ring_buffer.at(read_idx & ring_buffer_mask).load();
-            m_reading.store(false);
+            elem = m_ring_buffer[read_idx & ring_buffer_mask];
+            m_pop_index.store(read_idx + 1U, std::memory_order_release);
 
             return true;
         }
@@ -251,11 +229,9 @@ namespace tools
         static constexpr const std::size_t ring_buffer_size = (1U << Pow2);
         static constexpr const std::size_t ring_buffer_mask = (ring_buffer_size - 1U);
 
-        std::array<std::atomic<T>, ring_buffer_size> m_ring_buffer;
+        std::array<T, ring_buffer_size> m_ring_buffer {};
         std::atomic<std::size_t> m_push_index = 0U;
         std::atomic<std::size_t> m_pop_index = 0U;
-        std::atomic_bool m_reading = false;
-        std::atomic_bool m_writing = false;
     };
 }
 

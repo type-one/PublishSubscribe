@@ -251,6 +251,47 @@ void test_lock_free_ring_buffer()
         std::cout << "  " << popped_second[i] << std::endl;
     }
 #endif
+
+    // small SPSC stress test: force wraparound repeatedly and verify FIFO ordering.
+    tools::lock_free_ring_buffer<int, 3U> stress_queue;
+    constexpr int stress_item_count = 50000;
+    std::atomic_bool ordering_ok = true;
+
+    std::thread producer(
+        [&stress_queue]()
+        {
+            for (int value = 0; value < stress_item_count; ++value)
+            {
+                while (!stress_queue.push(value))
+                {
+                    std::this_thread::yield();
+                }
+            }
+        });
+
+    std::thread consumer(
+        [&stress_queue, &ordering_ok]()
+        {
+            for (int expected = 0; expected < stress_item_count; ++expected)
+            {
+                int value = 0;
+                while (!stress_queue.pop(value))
+                {
+                    std::this_thread::yield();
+                }
+
+                if (value != expected)
+                {
+                    ordering_ok.store(false);
+                }
+            }
+        });
+
+    producer.join();
+    consumer.join();
+
+    std::cout << "SPSC wraparound stress ordering OK: " << std::boolalpha << ordering_ok.load() << std::noboolalpha
+              << std::endl;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
