@@ -258,7 +258,7 @@ void test_lock_free_ring_buffer()
     std::atomic_bool ordering_ok = true;
 
     std::thread producer(
-        [&stress_queue]()
+        [&stress_queue, stress_item_count]()
         {
             for (int value = 0; value < stress_item_count; ++value)
             {
@@ -270,7 +270,7 @@ void test_lock_free_ring_buffer()
         });
 
     std::thread consumer(
-        [&stress_queue, &ordering_ok]()
+        [&stress_queue, &ordering_ok, stress_item_count]()
         {
             for (int expected = 0; expected < stress_item_count; ++expected)
             {
