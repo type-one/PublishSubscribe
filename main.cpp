@@ -1214,6 +1214,75 @@ void test_worker_tasks()
     }
 }
 
+void test_worker_tasks_async()
+{
+    std::cout << "-- worker tasks async --" << std::endl;
+
+    auto context = std::make_shared<my_worker_task_context>();
+    auto task = std::make_unique<my_worker_task>(context, "worker_async");
+
+    auto computation = task->delegate_async(
+        [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int value)
+        {
+            ctx->loop_counter++;
+            std::cout << "compute on " << task_name << ", value=" << value << std::endl;
+            return value * 2;
+        },
+        21)
+                           .then(
+                               [](portable_concurrency::future<int> previous)
+                               {
+                                   return previous.get() + 1;
+                               });
+
+    const auto result = computation.get();
+    std::cout << "async chained result = " << result << std::endl;
+    std::cout << "async jobs executed = " << context->loop_counter.load() << std::endl;
+}
+
+void test_worker_tasks_async_fanout()
+{
+    std::cout << "-- worker tasks async fanout --" << std::endl;
+
+    auto context = std::make_shared<my_worker_task_context>();
+    auto task = std::make_unique<my_worker_task>(context, "worker_async_fanout");
+
+    std::vector<portable_concurrency::future<int>> jobs;
+    jobs.reserve(5);
+
+    for (int value = 1; value <= 5; ++value)
+    {
+        jobs.emplace_back(task->delegate_async(
+            [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int v)
+            {
+                ctx->loop_counter++;
+                std::cout << "fanout compute on " << task_name << ", value=" << v << std::endl;
+                return v * v;
+            },
+            value)
+                              .then(task->as_executor(),
+                                  [](portable_concurrency::future<int> previous)
+                                  {
+                                      return previous.get() + 10;
+                                  }));
+    }
+
+    auto total_future = portable_concurrency::when_all(std::move(jobs)).next(
+        [](std::vector<portable_concurrency::future<int>> results)
+        {
+            int total = 0;
+            for (auto& result_future : results)
+            {
+                total += result_future.get();
+            }
+            return total;
+        });
+
+    const auto total = total_future.get();
+    std::cout << "fanout/fanin total = " << total << std::endl;
+    std::cout << "fanout async jobs executed = " << context->loop_counter.load() << std::endl;
+}
+
 //--------------------------------------------------------------------------------------------------------------------------------
 namespace
 {
@@ -1356,6 +1425,8 @@ int main(int argc, char* argv[])
     test_queued_commands();
     test_ring_buffer_commands();
     test_worker_tasks();
+    test_worker_tasks_async();
+    test_worker_tasks_async_fanout();
 
     test_allocator_stress();
 

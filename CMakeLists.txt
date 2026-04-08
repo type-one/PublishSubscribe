@@ -129,9 +129,13 @@ set(TARGET_TOOLS_SRC
     tools/sync_object.cpp
 )
 
+set(PORTABLE_CONCURRENCY_SRC
+    portable_concurrency/bits/portable_concurrency.cpp
+)
 
 set(TARGET_SRC
     main.cpp
+    "${PORTABLE_CONCURRENCY_SRC}"
     "${TARGET_TOOLS_SRC}"
 )
 
