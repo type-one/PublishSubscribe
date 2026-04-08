@@ -251,6 +251,48 @@ namespace tools
                 as_executor(), std::forward<Callable>(work), m_context, m_task_name, std::forward<Args>(args)...);
         }
 
+#if defined(PC_HAS_COROUTINES)
+        /**
+         * @brief Awaitable that resumes the awaiting coroutine on this worker thread.
+         *
+         * Usage pattern:
+         * `co_await worker.schedule();` to switch execution to the worker context.
+         */
+        class schedule_awaitable
+        {
+        public:
+            explicit schedule_awaitable(worker_task* owner)
+                : m_owner(owner)
+            {
+            }
+
+            [[nodiscard]] bool await_ready() const noexcept
+            {
+                return false;
+            }
+
+            void await_suspend(portable_concurrency::detail::coroutine_handle<> handle)
+            {
+                m_owner->delegate([handle](std::shared_ptr<Context>, const std::string&) mutable { handle.resume(); });
+            }
+
+            void await_resume() const noexcept
+            {
+            }
+
+        private:
+            worker_task* m_owner = nullptr;
+        };
+
+        /**
+         * @brief Returns an awaitable to transfer coroutine execution to this worker.
+         */
+        [[nodiscard]] schedule_awaitable schedule()
+        {
+            return schedule_awaitable { this };
+        }
+#endif
+
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
         // C++20: range batch delegate; accepts any input_range of call_back-compatible elements.
         template <std::ranges::input_range Range>

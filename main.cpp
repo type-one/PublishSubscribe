@@ -1281,6 +1281,37 @@ void test_worker_tasks_async_fanout()
     std::cout << "fanout async jobs executed = " << context->loop_counter.load() << std::endl;
 }
 
+#if defined(PC_HAS_COROUTINES)
+portable_concurrency::future<int> worker_task_coro_job(
+    my_worker_task& task, const std::shared_ptr<my_worker_task_context>& context, int value)
+{
+    std::cout << "coroutine started on thread " << std::this_thread::get_id() << std::endl;
+
+    // Hop to the worker thread before computing the result.
+    co_await task.schedule();
+
+    std::cout << "coroutine resumed on worker thread " << std::this_thread::get_id() << std::endl;
+    context->loop_counter++;
+    co_return value * 3;
+}
+
+void test_worker_tasks_coroutine_schedule()
+{
+    std::cout << "-- worker tasks coroutine schedule --" << std::endl;
+
+    auto context = std::make_shared<my_worker_task_context>();
+    auto task = std::make_unique<my_worker_task>(context, "worker_async_coro");
+
+    auto result_future
+        = worker_task_coro_job(*task, context, 14)
+              .then(task->as_executor(), [](portable_concurrency::future<int> previous) { return previous.get() + 2; });
+
+    const auto result = result_future.get();
+    std::cout << "coroutine result = " << result << std::endl;
+    std::cout << "coroutine jobs executed = " << context->loop_counter.load() << std::endl;
+}
+#endif
+
 //--------------------------------------------------------------------------------------------------------------------------------
 namespace
 {
@@ -1425,6 +1456,9 @@ int main(int argc, char* argv[])
     test_worker_tasks();
     test_worker_tasks_async();
     test_worker_tasks_async_fanout();
+#if defined(PC_HAS_COROUTINES)
+    test_worker_tasks_coroutine_schedule();
+#endif
 
     test_allocator_stress();
 
