@@ -466,7 +466,8 @@ void test_ring_vector()
     // overwrite-on-full mode (push_range)
     tools::ring_vector<std::string> overwrite_range_vec(4U);
     std::vector<std::string> overwrite_input = { "W1", "W2", "W3", "W4", "W5", "W6" };
-    const auto overwrite_result = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
+    const auto overwrite_result
+        = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
     std::cout << "overwrite range inserted=" << overwrite_result.inserted
               << " overwritten=" << overwrite_result.overwritten << std::endl;
     std::cout << "overwrite range contents (recent history):" << std::endl;
@@ -596,7 +597,8 @@ void test_sync_ring_vector()
     // overwrite-on-full mode (push_range)
     tools::sync_ring_vector<std::string> overwrite_range_vec(4U);
     std::vector<std::string> overwrite_input = { "W1", "W2", "W3", "W4", "W5", "W6" };
-    const auto overwrite_result = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
+    const auto overwrite_result
+        = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
     std::cout << "sync overwrite range inserted=" << overwrite_result.inserted
               << " overwritten=" << overwrite_result.overwritten << std::endl;
     std::cout << "sync overwrite range contents (recent history):" << std::endl;
@@ -1214,6 +1216,150 @@ void test_worker_tasks()
     }
 }
 
+void test_worker_tasks_async()
+{
+    std::cout << "-- worker tasks async --" << std::endl;
+
+    auto context = std::make_shared<my_worker_task_context>();
+    auto task = std::make_unique<my_worker_task>(context, "worker_async");
+
+    auto computation
+        = task->delegate_async(
+                  [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int value)
+                  {
+                      ctx->loop_counter++;
+                      std::cout << "compute on " << task_name << ", value=" << value << std::endl;
+                      return value * 2;
+                  },
+                  21)
+              .then([](portable_concurrency::future<int> previous) { return previous.get() + 1; });
+
+    const auto result = computation.get();
+    std::cout << "async chained result = " << result << std::endl;
+    std::cout << "async jobs executed = " << context->loop_counter.load() << std::endl;
+}
+
+void test_worker_tasks_async_fanout()
+{
+    std::cout << "-- worker tasks async fanout --" << std::endl;
+
+    auto context = std::make_shared<my_worker_task_context>();
+    auto task = std::make_unique<my_worker_task>(context, "worker_async_fanout");
+
+    std::vector<portable_concurrency::future<int>> jobs;
+    jobs.reserve(5);
+
+    for (int value = 1; value <= 5; ++value)
+    {
+        jobs.emplace_back(
+            task->delegate_async(
+                    [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int v)
+                    {
+                        ctx->loop_counter++;
+                        std::cout << "fanout compute on " << task_name << ", value=" << v << std::endl;
+                        return v * v;
+                    },
+                    value)
+                .then(task->as_executor(),
+                    [](portable_concurrency::future<int> previous) { return previous.get() + 10; }));
+    }
+
+    auto total_future = portable_concurrency::when_all(std::move(jobs))
+                            .next(
+                                [](std::vector<portable_concurrency::future<int>> results)
+                                {
+                                    int total = 0;
+                                    for (auto& result_future : results)
+                                    {
+                                        total += result_future.get();
+                                    }
+                                    return total;
+                                });
+
+    const auto total = total_future.get();
+    std::cout << "fanout/fanin total = " << total << std::endl;
+    std::cout << "fanout async jobs executed = " << context->loop_counter.load() << std::endl;
+}
+
+#if defined(PC_HAS_COROUTINES)
+portable_concurrency::future<int> worker_task_coro_job(
+    my_worker_task& task, const std::shared_ptr<my_worker_task_context>& context, int value)
+{
+    std::cout << "coroutine started on thread " << std::this_thread::get_id() << std::endl;
+
+    // Hop to the worker thread before computing the result.
+    co_await task.schedule();
+
+    std::cout << "coroutine resumed on worker thread " << std::this_thread::get_id() << std::endl;
+    context->loop_counter++;
+    co_return value * 3;
+}
+
+portable_concurrency::future<int> worker_task_mixed_coro_job(my_worker_task& task,
+    const std::shared_ptr<my_worker_task_context>& context, portable_concurrency::future<int> async_value)
+{
+    std::cout << "mixed coroutine started on thread " << std::this_thread::get_id() << std::endl;
+
+    // Switch coroutine execution to the worker thread.
+    co_await task.schedule();
+
+    std::cout << "mixed coroutine resumed on worker thread " << std::this_thread::get_id() << std::endl;
+
+    // Await the delegate_async result from inside the coroutine flow.
+    const auto async_result = co_await async_value;
+    context->loop_counter++;
+    co_return async_result + 7;
+}
+
+void test_worker_tasks_coroutine_schedule()
+{
+    std::cout << "-- worker tasks coroutine schedule --" << std::endl;
+
+    auto context = std::make_shared<my_worker_task_context>();
+    auto task = std::make_unique<my_worker_task>(context, "worker_async_coro");
+
+    auto result_future
+        = worker_task_coro_job(*task, context, 14)
+              .then(task->as_executor(), [](portable_concurrency::future<int> previous) { return previous.get() + 2; });
+
+    const auto result = result_future.get();
+    std::cout << "coroutine result = " << result << std::endl;
+    std::cout << "coroutine jobs executed = " << context->loop_counter.load() << std::endl;
+}
+
+void test_worker_tasks_mixed_execution()
+{
+    std::cout << "-- worker tasks mixed execution --" << std::endl;
+
+    auto context = std::make_shared<my_worker_task_context>();
+    auto task = std::make_unique<my_worker_task>(context, "worker_mixed");
+
+    task->delegate(
+        [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name)
+        {
+            std::cout << "delegate on " << task_name << std::endl;
+            ctx->loop_counter++;
+        });
+
+    auto async_value = task->delegate_async(
+        [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int value)
+        {
+            std::cout << "delegate_async on " << task_name << ", value=" << value << std::endl;
+            ctx->loop_counter++;
+            return value * 5;
+        },
+        6);
+
+    auto mixed_result_future
+        = worker_task_mixed_coro_job(*task, context, std::move(async_value))
+              .then(task->as_executor(), [](portable_concurrency::future<int> previous) { return previous.get() + 1; });
+
+    const auto mixed_result = mixed_result_future.get();
+    std::cout << "mixed execution result = " << mixed_result << std::endl;
+    std::cout << "mixed execution jobs executed = " << context->loop_counter.load() << std::endl;
+}
+#endif
+
 //--------------------------------------------------------------------------------------------------------------------------------
 namespace
 {
@@ -1356,6 +1502,12 @@ int main(int argc, char* argv[])
     test_queued_commands();
     test_ring_buffer_commands();
     test_worker_tasks();
+    test_worker_tasks_async();
+    test_worker_tasks_async_fanout();
+#if defined(PC_HAS_COROUTINES)
+    test_worker_tasks_coroutine_schedule();
+    test_worker_tasks_mixed_execution();
+#endif
 
     test_allocator_stress();
 

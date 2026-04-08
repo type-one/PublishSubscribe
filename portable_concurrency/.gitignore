@@ -1,0 +1,5 @@
+conanbuildinfo.cmake
+conaninfo.txt
+build
+*.kdev4
+CMakeLists.txt.user

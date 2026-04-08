@@ -1,0 +1,7 @@
+// <future_fwd> -*- C++ -*-
+#pragma once
+
+#include "bits/alias_namespace.h"
+#include "bits/future.h"
+#include "bits/fwd.h"
+#include "bits/shared_future.h"
