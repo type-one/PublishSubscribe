@@ -466,7 +466,8 @@ void test_ring_vector()
     // overwrite-on-full mode (push_range)
     tools::ring_vector<std::string> overwrite_range_vec(4U);
     std::vector<std::string> overwrite_input = { "W1", "W2", "W3", "W4", "W5", "W6" };
-    const auto overwrite_result = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
+    const auto overwrite_result
+        = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
     std::cout << "overwrite range inserted=" << overwrite_result.inserted
               << " overwritten=" << overwrite_result.overwritten << std::endl;
     std::cout << "overwrite range contents (recent history):" << std::endl;
@@ -596,7 +597,8 @@ void test_sync_ring_vector()
     // overwrite-on-full mode (push_range)
     tools::sync_ring_vector<std::string> overwrite_range_vec(4U);
     std::vector<std::string> overwrite_input = { "W1", "W2", "W3", "W4", "W5", "W6" };
-    const auto overwrite_result = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
+    const auto overwrite_result
+        = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
     std::cout << "sync overwrite range inserted=" << overwrite_result.inserted
               << " overwritten=" << overwrite_result.overwritten << std::endl;
     std::cout << "sync overwrite range contents (recent history):" << std::endl;
@@ -1221,19 +1223,16 @@ void test_worker_tasks_async()
     auto context = std::make_shared<my_worker_task_context>();
     auto task = std::make_unique<my_worker_task>(context, "worker_async");
 
-    auto computation = task->delegate_async(
-        [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int value)
-        {
-            ctx->loop_counter++;
-            std::cout << "compute on " << task_name << ", value=" << value << std::endl;
-            return value * 2;
-        },
-        21)
-                           .then(
-                               [](portable_concurrency::future<int> previous)
-                               {
-                                   return previous.get() + 1;
-                               });
+    auto computation
+        = task->delegate_async(
+                  [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int value)
+                  {
+                      ctx->loop_counter++;
+                      std::cout << "compute on " << task_name << ", value=" << value << std::endl;
+                      return value * 2;
+                  },
+                  21)
+              .then([](portable_concurrency::future<int> previous) { return previous.get() + 1; });
 
     const auto result = computation.get();
     std::cout << "async chained result = " << result << std::endl;
@@ -1252,31 +1251,30 @@ void test_worker_tasks_async_fanout()
 
     for (int value = 1; value <= 5; ++value)
     {
-        jobs.emplace_back(task->delegate_async(
-            [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int v)
-            {
-                ctx->loop_counter++;
-                std::cout << "fanout compute on " << task_name << ", value=" << v << std::endl;
-                return v * v;
-            },
-            value)
-                              .then(task->as_executor(),
-                                  [](portable_concurrency::future<int> previous)
-                                  {
-                                      return previous.get() + 10;
-                                  }));
+        jobs.emplace_back(
+            task->delegate_async(
+                    [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int v)
+                    {
+                        ctx->loop_counter++;
+                        std::cout << "fanout compute on " << task_name << ", value=" << v << std::endl;
+                        return v * v;
+                    },
+                    value)
+                .then(task->as_executor(),
+                    [](portable_concurrency::future<int> previous) { return previous.get() + 10; }));
     }
 
-    auto total_future = portable_concurrency::when_all(std::move(jobs)).next(
-        [](std::vector<portable_concurrency::future<int>> results)
-        {
-            int total = 0;
-            for (auto& result_future : results)
-            {
-                total += result_future.get();
-            }
-            return total;
-        });
+    auto total_future = portable_concurrency::when_all(std::move(jobs))
+                            .next(
+                                [](std::vector<portable_concurrency::future<int>> results)
+                                {
+                                    int total = 0;
+                                    for (auto& result_future : results)
+                                    {
+                                        total += result_future.get();
+                                    }
+                                    return total;
+                                });
 
     const auto total = total_future.get();
     std::cout << "fanout/fanin total = " << total << std::endl;

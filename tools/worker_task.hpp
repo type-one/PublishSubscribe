@@ -111,10 +111,7 @@ namespace tools
     {
         auto shared_task = std::make_shared<std::decay_t<Task>>(std::forward<Task>(task));
         exec.m_owner->delegate(
-            [shared_task](std::shared_ptr<Context>, const std::string&) mutable
-            {
-                (*shared_task)();
-            });
+            [shared_task](std::shared_ptr<Context>, const std::string&) mutable { (*shared_task)(); });
     }
 
     /**
@@ -184,11 +181,11 @@ namespace tools
         // note: native handle allows specific OS calls like setting scheduling policy or setting priority
         [[nodiscard]] void* native_handle() const
         {
-    #if defined(__linux__)
+#if defined(__linux__)
             return reinterpret_cast<void*>(m_task->native_handle());
-    #else
+#else
             return nullptr;
-    #endif
+#endif
         }
 
         // rvalue overload: enqueue a pre-built std::function by move.
@@ -245,12 +242,13 @@ namespace tools
 
         // Execute a value-returning function on this worker and get a future for then() chaining.
         template <typename Callable, typename... Args>
-        auto delegate_async(Callable&& work, Args&&... args)
-            -> decltype(portable_concurrency::async(std::declval<executor_type>(), std::forward<Callable>(work),
-                std::declval<std::shared_ptr<Context>>(), std::declval<std::string>(), std::forward<Args>(args)...))
+        auto delegate_async(
+            Callable&& work, Args&&... args) -> decltype(portable_concurrency::async(std::declval<executor_type>(),
+                                                 std::forward<Callable>(work), std::declval<std::shared_ptr<Context>>(),
+                                                 std::declval<std::string>(), std::forward<Args>(args)...))
         {
-            return portable_concurrency::async(as_executor(), std::forward<Callable>(work), m_context, m_task_name,
-                std::forward<Args>(args)...);
+            return portable_concurrency::async(
+                as_executor(), std::forward<Callable>(work), m_context, m_task_name, std::forward<Args>(args)...);
         }
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
