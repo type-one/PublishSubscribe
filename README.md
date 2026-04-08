@@ -13,7 +13,7 @@ Goodies:
 - simple waitable object on top of std::mutex and std::condition_variable
 - simple non_copyable abstract class
 - simple periodic task helper
-- simple worker task helper with async processing support
+- simple worker task helper with async processing support (& cpp20 coroutines)
 - simple thread-safe ring buffer on top of std::array
 - simple thread-safe and resizeable ring vector on top of std::vector
 - queuable commands
