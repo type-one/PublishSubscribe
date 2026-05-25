@@ -44,6 +44,7 @@
 #endif
 
 #include "tools/async_observer.hpp"
+#include "tools/expected.hpp"
 #include "tools/histogram.hpp"
 #include "tools/lock_free_ring_buffer.hpp"
 #include "tools/periodic_task.hpp"
@@ -852,6 +853,135 @@ void test_sync_dictionary()
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
+void test_expected()
+{
+    std::cout << "-- expected --" << std::endl;
+
+    auto parse_positive = [](int value) -> tools::expected<int, std::string>
+    {
+        if (value < 0)
+        {
+            return tools::unexpected<std::string>("value must be >= 0");
+        }
+        return value * 2;
+    };
+
+    auto ok = parse_positive(21);
+    if (ok.has_value())
+    {
+        std::cout << "ok value=" << ok.value() << std::endl;
+    }
+
+    auto ko = parse_positive(-1);
+    if (!ko.has_value())
+    {
+        std::cout << "error=" << ko.error() << std::endl;
+    }
+
+    auto validate_name = [](const std::string& name) -> tools::expected<void, std::string>
+    {
+        if (name.empty())
+        {
+            return tools::unexpected<std::string>("name is empty");
+        }
+        return {};
+    };
+
+    auto status = validate_name("");
+    if (!status)
+    {
+        std::cout << "void-error=" << status.error() << std::endl;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_expected_unit_style()
+{
+    std::cout << "-- expected unit-style checks --" << std::endl;
+
+    std::size_t passed = 0U;
+    std::size_t failed = 0U;
+
+    auto check = [&passed, &failed](bool condition, const char* name)
+    {
+        if (condition)
+        {
+            ++passed;
+            std::cout << "  [PASS] " << name << std::endl;
+        }
+        else
+        {
+            ++failed;
+            std::cout << "  [FAIL] " << name << std::endl;
+        }
+    };
+
+    auto parse_positive = [](int value) -> tools::expected<int, std::string>
+    {
+        if (value < 0)
+        {
+            return tools::unexpected<std::string>("negative");
+        }
+        return value;
+    };
+
+    {
+        auto result = parse_positive(7);
+        check(result.has_value(), "success has_value");
+        check(static_cast<bool>(result), "success bool conversion");
+        check(result.value() == 7, "success value");
+        check(result.value_or(42) == 7, "success value_or keeps value");
+    }
+
+    {
+        auto result = parse_positive(-3);
+        check(!result.has_value(), "error has_value");
+        check(!static_cast<bool>(result), "error bool conversion");
+        check(result.error() == "negative", "error payload");
+        check(result.value_or(42) == 42, "error value_or fallback");
+    }
+
+    {
+        tools::expected<int, std::string> result(tools::unexpect, "bad parse");
+        check(!result.has_value(), "unexpect constructor");
+        check(result.error() == "bad parse", "unexpect error payload");
+    }
+
+    auto validate_name = [](const std::string& name) -> tools::expected<void, std::string>
+    {
+        if (name.empty())
+        {
+            return tools::unexpected<std::string>("empty");
+        }
+        return {};
+    };
+
+    {
+        auto status_ok = validate_name("alice");
+        check(status_ok.has_value(), "void success has_value");
+        check(static_cast<bool>(status_ok), "void success bool conversion");
+        status_ok.value();
+        check(true, "void success value() precondition");
+    }
+
+    {
+        auto status_error = validate_name("");
+        check(!status_error.has_value(), "void error has_value");
+        check(status_error.error() == "empty", "void error payload");
+    }
+
+#if defined(TOOLS_HAS_STD_EXPECTED)
+    std::cout << "  backend: std::expected" << std::endl;
+#else
+    std::cout << "  backend: tools fallback expected" << std::endl;
+#endif
+
+    std::cout << "  summary: passed=" << passed << " failed=" << failed << std::endl;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
 void test_histogram()
 {
     std::cout << "-- histogram --" << std::endl;
@@ -1555,6 +1685,8 @@ int main(int argc, char* argv[])
     test_sync_queue();
     test_sync_priority_queue();
     test_sync_dictionary();
+    test_expected();
+    test_expected_unit_style();
     test_histogram();
 
     test_publish_subscribe();
