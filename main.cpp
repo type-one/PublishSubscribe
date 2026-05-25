@@ -29,6 +29,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <random>
@@ -59,6 +60,10 @@
 #include "tools/sync_time_list.hpp"
 #include "tools/time_list.hpp"
 #include "tools/worker_task.hpp"
+
+#include "portable_concurrency/p_latch.hpp"
+#include "portable_concurrency/p_thread_pool.hpp"
+#include "portable_concurrency/p_timed_waiter.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
@@ -1736,6 +1741,179 @@ void test_worker_tasks_async_fanout()
     std::cout << "fanout async jobs executed = " << context->loop_counter.load() << std::endl;
 }
 
+void test_portable_concurrency_test_parity()
+{
+    std::cout << "-- portable_concurrency test parity --" << std::endl;
+
+    std::size_t passed = 0U;
+    std::size_t failed = 0U;
+
+    auto check = [&passed, &failed](bool condition, const char* name)
+    {
+        if (condition)
+        {
+            ++passed;
+            std::cout << "  [PASS] " << name << std::endl;
+        }
+        else
+        {
+            ++failed;
+            std::cout << "  [FAIL] " << name << std::endl;
+        }
+    };
+
+    // when_any tuple: result index points to first fulfilled input.
+    {
+        auto p0 = portable_concurrency::make_promise<int>();
+        auto p1 = portable_concurrency::make_promise<std::string>();
+        auto sf0 = p0.second.share();
+
+        auto any_future = portable_concurrency::when_any(sf0, std::move(p1.second));
+        check(any_future.valid(), "when_any(tuple) returns valid future");
+        check(!any_future.is_ready(), "when_any(tuple) not ready before fulfillment");
+
+        p1.first.set_value("hello");
+        auto any_result = any_future.get();
+
+        check(any_result.index == 1U, "when_any(tuple) reports ready index");
+        check(std::get<1>(any_result.futures).get() == "hello", "when_any(tuple) transports result");
+    }
+
+    // when_any vector/range: supports movable future sequences.
+    {
+        auto p0 = portable_concurrency::make_promise<int>();
+        auto p1 = portable_concurrency::make_promise<int>();
+
+        std::vector<portable_concurrency::future<int>> futures;
+        futures.emplace_back(std::move(p0.second));
+        futures.emplace_back(std::move(p1.second));
+
+        auto any_future = portable_concurrency::when_any(futures.begin(), futures.end());
+        p0.first.set_value(7);
+        auto any_result = any_future.get();
+
+        check(any_result.index == 0U, "when_any(vector) reports first completed index");
+        check(any_result.futures[0].get() == 7, "when_any(vector) contains completed future");
+    }
+
+    // packaged_task unwrap: future<future<T>> collapses to future<T> and invalid inner future becomes broken_promise.
+    {
+        portable_concurrency::packaged_task<portable_concurrency::future<int>()> task_ok(
+            []() { return portable_concurrency::make_ready_future(42); });
+        auto future_ok = task_ok.get_future();
+        task_ok();
+        check(future_ok.get() == 42, "packaged_task unwraps ready future result");
+
+        portable_concurrency::packaged_task<portable_concurrency::future<int>()> task_bad(
+            []() { return portable_concurrency::future<int> {}; });
+        auto future_bad = task_bad.get_future();
+        task_bad();
+
+        bool got_broken_promise = false;
+        try
+        {
+            (void)future_bad.get();
+        }
+        catch (const std::future_error& err)
+        {
+            got_broken_promise = (err.code() == std::make_error_code(std::future_errc::broken_promise));
+        }
+        check(got_broken_promise, "packaged_task invalid inner future -> broken_promise");
+    }
+
+    // promise lifecycle: abandoning an unresolved promise must fail awaiting future with broken_promise.
+    {
+        auto promise_and_future = portable_concurrency::make_promise<int>();
+        auto abandoned_future = std::move(promise_and_future.second);
+        {
+            auto abandoned_promise = std::move(promise_and_future.first);
+        }
+
+        bool got_broken_promise = false;
+        try
+        {
+            (void)abandoned_future.get();
+        }
+        catch (const std::future_error& err)
+        {
+            got_broken_promise = (err.code() == std::make_error_code(std::future_errc::broken_promise));
+        }
+        check(got_broken_promise, "promise abandon propagates broken_promise");
+    }
+
+    // packaged_task lifecycle: destroying a task with outstanding future must abandon shared state.
+    {
+        portable_concurrency::future<int> pending;
+        {
+            portable_concurrency::packaged_task<int()> task([]() { return 5; });
+            pending = task.get_future();
+        }
+
+        bool got_broken_promise = false;
+        try
+        {
+            (void)pending.get();
+        }
+        catch (const std::future_error& err)
+        {
+            got_broken_promise = (err.code() == std::make_error_code(std::future_errc::broken_promise));
+        }
+        check(got_broken_promise, "packaged_task destructor abandons pending future");
+    }
+
+    // canceler callback: action executes only when cancellable promise is abandoned before completion.
+    {
+        bool cancel_called = false;
+        {
+            auto cancellable = portable_concurrency::make_promise<int>(
+                portable_concurrency::canceler_arg, [&cancel_called]() { cancel_called = true; });
+            auto awaiting_future = std::move(cancellable.second);
+            (void)awaiting_future.valid();
+        }
+        check(cancel_called, "cancellable promise invokes cancel action on abandon");
+    }
+
+    // timed_waiter + latch: timeout first, then ready once work is released.
+    {
+        portable_concurrency::static_thread_pool pool(2U);
+        portable_concurrency::latch gate(2);
+
+        auto async_future = portable_concurrency::async(pool.executor(),
+            [&gate]()
+            {
+                gate.count_down_and_wait();
+                return 123;
+            });
+
+        portable_concurrency::timed_waiter waiter(async_future);
+        const auto timeout_status = waiter.wait_for(std::chrono::milliseconds(1));
+        check(timeout_status == portable_concurrency::future_status::timeout,
+            "timed_waiter wait_for times out while task blocked");
+
+        gate.count_down();
+        const auto ready_status = waiter.wait_for(std::chrono::seconds(1));
+        check(ready_status == portable_concurrency::future_status::ready,
+            "timed_waiter wait_for becomes ready after latch release");
+        check(async_future.get() == 123, "async future returns expected value after latch release");
+
+        pool.wait();
+    }
+
+    // shared_future.then: source shared future stays valid and continuation receives result.
+    {
+        auto promise_and_future = portable_concurrency::make_promise<int>();
+        auto shared = promise_and_future.second.share();
+
+        auto continuation = shared.then([](portable_concurrency::shared_future<int> src) { return src.get() + 1; });
+
+        check(shared.valid(), "shared_future.then keeps source future valid");
+        promise_and_future.first.set_value(10);
+        check(continuation.get() == 11, "shared_future.then continuation result");
+    }
+
+    std::cout << "  summary: passed=" << passed << " failed=" << failed << std::endl;
+}
+
 #if defined(PC_HAS_COROUTINES)
 portable_concurrency::future<int> worker_task_coro_job(
     my_worker_task& task, const std::shared_ptr<my_worker_task_context>& context, int value)
@@ -1966,6 +2144,7 @@ int main(int argc, char* argv[])
     test_worker_tasks();
     test_worker_tasks_async();
     test_worker_tasks_async_fanout();
+    test_portable_concurrency_test_parity();
 #if defined(PC_HAS_COROUTINES)
     test_worker_tasks_coroutine_schedule();
     test_worker_tasks_mixed_execution();
