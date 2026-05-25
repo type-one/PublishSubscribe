@@ -56,6 +56,8 @@
 #include "tools/sync_queue.hpp"
 #include "tools/sync_ring_buffer.hpp"
 #include "tools/sync_ring_vector.hpp"
+#include "tools/sync_time_list.hpp"
+#include "tools/time_list.hpp"
 #include "tools/worker_task.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -982,6 +984,268 @@ void test_expected_unit_style()
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
+void test_time_list()
+{
+    std::cout << "-- time_list --" << std::endl;
+
+    // Integral timestamp + string payload.
+    tools::time_list<long, std::string> int_list;
+    int_list.push(300L, "three hundred");
+    int_list.push(100L, "one hundred");
+    int_list.emplace(200L, "two hundred");
+
+    auto earliest = int_list.top();
+    if (earliest.has_value())
+    {
+        std::cout << "integral earliest: " << earliest->first << " => " << earliest->second << std::endl;
+    }
+
+    auto sorted_snapshot = int_list.snapshot_sorted();
+    std::cout << "integral snapshot order:" << std::endl;
+    for (const auto& entry : sorted_snapshot)
+    {
+        std::cout << "  " << entry.first << " => " << entry.second << std::endl;
+    }
+
+    std::cout << "integral drain order:" << std::endl;
+    while (!int_list.empty())
+    {
+        auto entry = int_list.top_pop();
+        if (entry.has_value())
+        {
+            std::cout << "  " << entry->first << " => " << entry->second << std::endl;
+        }
+    }
+
+    // Chrono timestamp + simple payload.
+    using steady_tp = std::chrono::steady_clock::time_point;
+    tools::time_list<steady_tp, int> chrono_list;
+    const auto base_time = std::chrono::steady_clock::now();
+
+    chrono_list.push(base_time + std::chrono::milliseconds(300), 3);
+    chrono_list.push(base_time + std::chrono::milliseconds(100), 1);
+    chrono_list.push(base_time + std::chrono::milliseconds(200), 2);
+
+    std::cout << "chrono drain order (values should be 1,2,3):" << std::endl;
+    while (!chrono_list.empty())
+    {
+        auto entry = chrono_list.top_pop();
+        if (entry.has_value())
+        {
+            std::cout << "  " << entry->second << std::endl;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_time_list_unit_style()
+{
+    std::cout << "-- time_list unit-style checks --" << std::endl;
+
+    std::size_t passed = 0U;
+    std::size_t failed = 0U;
+
+    auto check = [&passed, &failed](bool condition, const char* name)
+    {
+        if (condition)
+        {
+            ++passed;
+            std::cout << "  [PASS] " << name << std::endl;
+        }
+        else
+        {
+            ++failed;
+            std::cout << "  [FAIL] " << name << std::endl;
+        }
+    };
+
+    tools::time_list<long, int> list;
+
+    check(list.empty(), "starts empty");
+    check(list.size() == 0U, "starts with size 0");
+    check(!list.top().has_value(), "top() empty returns nullopt");
+    check(!list.top_pop().has_value(), "top_pop() empty returns nullopt");
+
+    list.push(300L, 300);
+    list.push(100L, 100);
+    list.emplace(200L, 200);
+
+    check(!list.empty(), "non-empty after inserts");
+    check(list.size() == 3U, "size after inserts");
+
+    auto top_entry = list.top();
+    check(top_entry.has_value(), "top() returns value when non-empty");
+    if (top_entry.has_value())
+    {
+        check(top_entry->first == 100L, "top() returns earliest timestamp");
+        check(top_entry->second == 100, "top() returns expected payload");
+    }
+
+    auto snapshot = list.snapshot_sorted();
+    check(snapshot.size() == 3U, "snapshot size matches");
+    if (snapshot.size() == 3U)
+    {
+        check(snapshot[0].first == 100L, "snapshot[0] timestamp");
+        check(snapshot[1].first == 200L, "snapshot[1] timestamp");
+        check(snapshot[2].first == 300L, "snapshot[2] timestamp");
+    }
+
+    check(list.size() == 3U, "snapshot does not drain container");
+
+    auto first = list.top_pop();
+    auto second = list.top_pop();
+    auto third = list.top_pop();
+
+    check(first.has_value() && first->first == 100L, "top_pop order #1");
+    check(second.has_value() && second->first == 200L, "top_pop order #2");
+    check(third.has_value() && third->first == 300L, "top_pop order #3");
+    check(list.empty(), "empty after full drain");
+
+    list.push(1L, 1);
+    list.push(2L, 2);
+    check(list.size() == 2U, "size before clear");
+    list.clear();
+    check(list.empty(), "clear empties container");
+    check(list.size() == 0U, "size is 0 after clear");
+
+    // Chrono timestamp coverage: verify chronological top_pop order.
+    using steady_tp = std::chrono::steady_clock::time_point;
+    tools::time_list<steady_tp, int> chrono_list;
+    const auto base_time = std::chrono::steady_clock::now();
+
+    chrono_list.push(base_time + std::chrono::milliseconds(300), 3);
+    chrono_list.push(base_time + std::chrono::milliseconds(100), 1);
+    chrono_list.push(base_time + std::chrono::milliseconds(200), 2);
+
+    auto c1 = chrono_list.top_pop();
+    auto c2 = chrono_list.top_pop();
+    auto c3 = chrono_list.top_pop();
+
+    check(c1.has_value() && c1->second == 1, "chrono top_pop order #1");
+    check(c2.has_value() && c2->second == 2, "chrono top_pop order #2");
+    check(c3.has_value() && c3->second == 3, "chrono top_pop order #3");
+
+    std::cout << "  summary: passed=" << passed << " failed=" << failed << std::endl;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_sync_time_list()
+{
+    std::cout << "-- sync_time_list --" << std::endl;
+
+    tools::sync_time_list<long, int> sync_list;
+    sync_list.push(30L, 30);
+    sync_list.push(10L, 10);
+    sync_list.push(40L, 40);
+    sync_list.push(20L, 20);
+
+    auto peeked = sync_list.top();
+    if (peeked.has_value())
+    {
+        std::cout << "sync earliest: " << peeked->first << " => " << peeked->second << std::endl;
+    }
+
+    auto snapshot = sync_list.snapshot_sorted();
+    std::cout << "sync snapshot order:" << std::endl;
+    for (const auto& entry : snapshot)
+    {
+        std::cout << "  " << entry.first << " => " << entry.second << std::endl;
+    }
+
+    std::cout << "sync drain order:" << std::endl;
+    while (!sync_list.empty())
+    {
+        auto entry = sync_list.top_pop();
+        if (entry.has_value())
+        {
+            std::cout << "  " << entry->first << " => " << entry->second << std::endl;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void test_sync_time_list_unit_style()
+{
+    std::cout << "-- sync_time_list unit-style checks --" << std::endl;
+
+    std::size_t passed = 0U;
+    std::size_t failed = 0U;
+
+    auto check = [&passed, &failed](bool condition, const char* name)
+    {
+        if (condition)
+        {
+            ++passed;
+            std::cout << "  [PASS] " << name << std::endl;
+        }
+        else
+        {
+            ++failed;
+            std::cout << "  [FAIL] " << name << std::endl;
+        }
+    };
+
+    tools::sync_time_list<long, int> list;
+
+    check(list.empty(), "starts empty");
+    check(list.size() == 0U, "starts with size 0");
+    check(!list.top().has_value(), "top() empty returns nullopt");
+    check(!list.top_pop().has_value(), "top_pop() empty returns nullopt");
+
+    list.push(30L, 30);
+    list.push(10L, 10);
+    list.push(40L, 40);
+    list.emplace(20L, 20);
+
+    check(!list.empty(), "non-empty after push/emplace");
+    check(list.size() == 4U, "size after 4 inserts");
+
+    auto top_entry = list.top();
+    check(top_entry.has_value(), "top() returns value when non-empty");
+    if (top_entry.has_value())
+    {
+        check(top_entry->first == 10L, "top() returns earliest timestamp");
+        check(top_entry->second == 10, "top() returns expected payload");
+    }
+
+    auto snapshot = list.snapshot_sorted();
+    check(snapshot.size() == 4U, "snapshot size matches");
+    if (snapshot.size() == 4U)
+    {
+        check(snapshot[0].first == 10L, "snapshot[0] timestamp");
+        check(snapshot[1].first == 20L, "snapshot[1] timestamp");
+        check(snapshot[2].first == 30L, "snapshot[2] timestamp");
+        check(snapshot[3].first == 40L, "snapshot[3] timestamp");
+    }
+
+    check(list.size() == 4U, "snapshot does not drain container");
+
+    auto first = list.top_pop();
+    auto second = list.top_pop();
+    auto third = list.top_pop();
+    auto fourth = list.top_pop();
+
+    check(first.has_value() && first->first == 10L, "top_pop order #1");
+    check(second.has_value() && second->first == 20L, "top_pop order #2");
+    check(third.has_value() && third->first == 30L, "top_pop order #3");
+    check(fourth.has_value() && fourth->first == 40L, "top_pop order #4");
+    check(list.empty(), "empty after full drain");
+
+    list.push(5L, 5);
+    list.push(15L, 15);
+    check(list.size() == 2U, "size before clear");
+    list.clear();
+    check(list.empty(), "clear empties container");
+    check(list.size() == 0U, "size is 0 after clear");
+
+    std::cout << "  summary: passed=" << passed << " failed=" << failed << std::endl;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
 void test_histogram()
 {
     std::cout << "-- histogram --" << std::endl;
@@ -1687,6 +1951,10 @@ int main(int argc, char* argv[])
     test_sync_dictionary();
     test_expected();
     test_expected_unit_style();
+    test_time_list();
+    test_time_list_unit_style();
+    test_sync_time_list();
+    test_sync_time_list_unit_style();
     test_histogram();
 
     test_publish_subscribe();
