@@ -51,6 +51,7 @@
 #include "tools/ring_vector.hpp"
 #include "tools/sync_dictionary.hpp"
 #include "tools/sync_observer.hpp"
+#include "tools/sync_priority_queue.hpp"
 #include "tools/sync_queue.hpp"
 #include "tools/sync_ring_buffer.hpp"
 #include "tools/sync_ring_vector.hpp"
@@ -728,6 +729,58 @@ void test_sync_queue()
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
+void test_sync_priority_queue()
+{
+    std::cout << "-- sync priority queue --" << std::endl;
+
+    tools::sync_priority_queue<int> min_heap;
+    min_heap.push(5);
+    min_heap.push(1);
+    min_heap.push(3);
+
+    std::cout << "min-heap pop order:" << std::endl;
+    while (!min_heap.empty())
+    {
+        auto item = min_heap.top_pop();
+        if (item.has_value())
+        {
+            std::cout << "  " << *item << std::endl;
+        }
+    }
+
+    enum class pq_topic
+    {
+        generic
+    };
+
+    struct priority_event
+    {
+        int priority;
+        std::string message;
+
+        bool operator<(const priority_event& other) const
+        {
+            return priority < other.priority;
+        }
+    };
+
+    // async_observer can swap sync_queue for sync_priority_queue transparently.
+    tools::async_observer<pq_topic, priority_event, tools::sync_priority_queue> observer;
+
+    observer.inform(pq_topic::generic, priority_event { 3, "low" }, "worker");
+    observer.inform(pq_topic::generic, priority_event { 1, "high" }, "worker");
+    observer.inform(pq_topic::generic, priority_event { 2, "medium" }, "worker");
+
+    auto events = observer.pop_all_events();
+    std::cout << "async_observer priority order:" << std::endl;
+    for (const auto& evt : events)
+    {
+        std::cout << "  p=" << std::get<1>(evt).priority << " msg=" << std::get<1>(evt).message << std::endl;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
 void test_sync_dictionary()
 {
     std::cout << "-- sync dictionary --" << std::endl;
@@ -787,6 +840,14 @@ void test_sync_dictionary()
     str_dict.clear();
     std::cout << "dictionary empty after clear: " << std::boolalpha << str_dict.empty() << std::noboolalpha
               << std::endl;
+
+    // same API, alternate backing container.
+    tools::sync_dictionary<std::string, std::string, std::unordered_map<std::string, std::string>> hash_dict;
+    hash_dict.add("u1", "one");
+    hash_dict.add("u2", "two");
+    auto hash_snapshot = hash_dict.snapshot();
+    std::cout << "unordered_map-backed dictionary size=" << hash_snapshot.size() << " contains(u2)=" << std::boolalpha
+              << hash_dict.contains("u2") << std::noboolalpha << std::endl;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -1492,6 +1553,7 @@ int main(int argc, char* argv[])
     test_ring_vector();
     test_sync_ring_vector();
     test_sync_queue();
+    test_sync_priority_queue();
     test_sync_dictionary();
     test_histogram();
 

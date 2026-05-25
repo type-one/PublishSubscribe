@@ -41,10 +41,13 @@
 #define SYNC_DICTIONARY_HPP_
 
 #include <cstddef>
+#include <initializer_list>
+#include <iterator>
 #include <map>
 #include <mutex>
 #include <optional>
 #include <shared_mutex>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -67,25 +70,39 @@ namespace tools
      *
      * @tparam K The type of the keys in the dictionary.
      * @tparam T The type of the values in the dictionary.
+     * @tparam TDictionary The associative container type used internally.
      */
-    template <typename K, typename T>
+    template <typename K, typename T, typename TDictionary = std::map<K, T>>
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+        requires(requires {
+            typename TDictionary::key_type;
+            typename TDictionary::mapped_type;
+        } && std::is_same_v<typename TDictionary::key_type, K> && std::is_same_v<typename TDictionary::mapped_type, T>)
+#endif
     class sync_dictionary : public non_copyable // NOLINT inherits from non copyable/non movable
     {
     public:
+        using dictionary_type = TDictionary;
+
+        static_assert(std::is_same<typename dictionary_type::key_type, K>::value,
+            "sync_dictionary: dictionary key_type must match K");
+        static_assert(std::is_same<typename dictionary_type::mapped_type, T>::value,
+            "sync_dictionary: dictionary mapped_type must match T");
+
         sync_dictionary() = default;
         ~sync_dictionary() = default;
 
         void add(const K& key, const T& value)
         {
             std::unique_lock guard(m_mutex);
-            m_dictionary[key] = value;
+            m_dictionary.insert_or_assign(key, value);
         }
 
         // rvalue overload: moves an already-constructed key and value into the dictionary
         void add(K&& key, T&& value)
         {
             std::unique_lock guard(m_mutex);
-            m_dictionary[std::move(key)] = std::move(value);
+            m_dictionary.insert_or_assign(std::move(key), std::move(value));
         }
 
         // perfect forwarding: constructs key and value in-place from arbitrary constructor arguments
@@ -96,7 +113,8 @@ namespace tools
         void add_emplace(KeyArgs&&... key_args, ValueArgs&&... value_args)
         {
             std::unique_lock guard(m_mutex);
-            m_dictionary[K(std::forward<KeyArgs>(key_args)...)] = T(std::forward<ValueArgs>(value_args)...);
+            m_dictionary.insert_or_assign(
+                K(std::forward<KeyArgs>(key_args)...), T(std::forward<ValueArgs>(value_args)...));
         }
 #else
         // C++17: std::enable_if_t provides equivalent SFINAE constraint
@@ -106,7 +124,8 @@ namespace tools
         void add_emplace(KeyArgs&&... key_args, ValueArgs&&... value_args)
         {
             std::unique_lock guard(m_mutex);
-            m_dictionary[K(std::forward<KeyArgs>(key_args)...)] = T(std::forward<ValueArgs>(value_args)...);
+            m_dictionary.insert_or_assign(
+                K(std::forward<KeyArgs>(key_args)...), T(std::forward<ValueArgs>(value_args)...));
         }
 #endif
 
@@ -126,6 +145,11 @@ namespace tools
             (void)add_range(collection.begin(), collection.end());
         }
 
+        void add_collection(std::initializer_list<std::pair<K, T>> collection)
+        {
+            (void)add_range(collection.begin(), collection.end());
+        }
+
         // C++17: iterator-pair batch insertion; returns inserted/updated count
         template <typename InputIt>
         std::size_t add_range(InputIt first, InputIt last)
@@ -134,7 +158,7 @@ namespace tools
             std::unique_lock guard(m_mutex);
             for (; first != last; ++first)
             {
-                m_dictionary[first->first] = first->second;
+                m_dictionary.insert_or_assign(first->first, first->second);
                 ++count;
             }
             return count;
@@ -147,20 +171,34 @@ namespace tools
         {
             std::size_t count = 0U;
             std::unique_lock guard(m_mutex);
-            for (auto&& entry : range)
+            for (auto&& entry : std::forward<Range>(range))
             {
-                m_dictionary[entry.first] = entry.second;
+                m_dictionary.insert_or_assign(entry.first, entry.second);
                 ++count;
             }
             return count;
         }
 #endif
 
-        std::map<K, T> get_collection() const
+        [[nodiscard]] dictionary_type snapshot() const
         {
             std::shared_lock guard(m_mutex);
-            auto snapshot = m_dictionary;
-            return snapshot;
+            return m_dictionary;
+        }
+
+        [[nodiscard]] dictionary_type get_collection() const
+        {
+            return snapshot();
+        }
+
+        [[nodiscard]] bool contains(const K& key) const
+        {
+            std::shared_lock guard(m_mutex);
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+            return m_dictionary.contains(key);
+#else
+            return m_dictionary.find(key) != m_dictionary.cend();
+#endif
         }
 
         std::optional<T> find(const K& key) const
@@ -194,7 +232,7 @@ namespace tools
         }
 
     private:
-        std::map<K, T> m_dictionary;
+        dictionary_type m_dictionary;
         mutable std::shared_mutex m_mutex;
     };
 }

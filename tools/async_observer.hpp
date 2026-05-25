@@ -37,6 +37,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -57,7 +58,7 @@ namespace tools
      * @tparam Topic The type of the topic associated with the events.
      * @tparam Evt The type of the event data.
      */
-    template <typename Topic, typename Evt>
+    template <typename Topic, typename Evt, template <typename...> class Sync_Container = sync_queue>
     class async_observer : public sync_observer<Topic, Evt> // NOLINT inherits indirectly from non copyable/non movable
     {
     public:
@@ -166,7 +167,7 @@ namespace tools
 #endif
 
         sync_object m_wakeable;
-        sync_queue<event_entry> m_evt_queue;
+        Sync_Container<event_entry> m_evt_queue;
     };
 
 }
