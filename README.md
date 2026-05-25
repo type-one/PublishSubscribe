@@ -3,19 +3,24 @@
 Agnostic, Lightweight and Portable Publish-Subscribe Helper
 
 - written in C++17 (and C++20) using templated classes
+- written in C++17 / C++20 / C++23 using templated classes
 - synchronous/asynchronous observer
 - topic subscription
 
 Goodies:
 
-- simple thread-safe dictionary helper on top of std::map
+- simple thread-safe dictionary helper on top of std::map (configurable to other associative containers, e.g. std::unordered_map)
 - simple thread-safe queue on top of std::queue
+- simple thread-safe priority queue
 - simple waitable object on top of std::mutex and std::condition_variable
 - simple non_copyable abstract class
+- expected/unexpected compatibility layer (std::expected alias on C++23 when available)
 - simple periodic task helper
 - simple worker task helper with async processing support (& cpp20 coroutines)
 - simple thread-safe ring buffer on top of std::array
 - simple thread-safe and resizeable ring vector on top of std::vector
+- chronological time_list and thread-safe sync_time_list helpers
+- async_observer supports pluggable synchronized event containers (queue/priority_queue compatible)
 - queuable commands
 - lock-free ring-buffer
 - custom pool allocator for global new/new[]/delete/delete[]
@@ -24,9 +29,9 @@ Goodies:
 
 ## What
 
-Small test program written in C++17 (and C++20) to implement a simple Publish/Subscribe pattern. The code is portable and lightweight.
+Small test program written in C++17 / C++20 / C++23 to implement a simple Publish/Subscribe pattern. The code is portable and lightweight.
 
-It compiles with C++17 and C++20 (with some extra features enabled, like std::ranges compatibility).
+It compiles with C++17, C++20 and C++23 (with extra features enabled when available, such as std::ranges and std::expected compatibility).
 
 ## Why
 
