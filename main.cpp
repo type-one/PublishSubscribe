@@ -263,11 +263,11 @@ void test_lock_free_ring_buffer()
 
     // small SPSC stress test: force wraparound repeatedly and verify FIFO ordering.
     tools::lock_free_ring_buffer<int, 3U> stress_queue;
-    constexpr int stress_item_count = 50000;
+    static constexpr int stress_item_count = 50000;
     std::atomic_bool ordering_ok = true;
 
     std::thread producer(
-        [&stress_queue, stress_item_count]()
+        [&stress_queue]()
         {
             for (int value = 0; value < stress_item_count; ++value)
             {
@@ -279,7 +279,7 @@ void test_lock_free_ring_buffer()
         });
 
     std::thread consumer(
-        [&stress_queue, &ordering_ok, stress_item_count]()
+        [&stress_queue, &ordering_ok]()
         {
             for (int expected = 0; expected < stress_item_count; ++expected)
             {
@@ -1449,7 +1449,7 @@ void test_periodic_task()
 
     auto context = std::make_shared<my_periodic_task_context>();
     // 20 ms period
-    constexpr const auto period = std::chrono::duration<int, std::micro>(20000);
+    static constexpr auto period = std::chrono::duration<int, std::micro>(20000);
     const auto start_timepoint = std::chrono::high_resolution_clock::now();
     my_periodic_task task1(lambda, context, "periodic task 1", period);
 

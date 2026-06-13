@@ -226,8 +226,8 @@ namespace tools
         }
 
     private:
-        static constexpr const std::size_t ring_buffer_size = (1U << Pow2);
-        static constexpr const std::size_t ring_buffer_mask = (ring_buffer_size - 1U);
+        static constexpr std::size_t ring_buffer_size = (1U << Pow2);
+        static constexpr std::size_t ring_buffer_mask = (ring_buffer_size - 1U);
 
         std::array<T, ring_buffer_size> m_ring_buffer {};
         std::atomic<std::size_t> m_push_index = 0U;

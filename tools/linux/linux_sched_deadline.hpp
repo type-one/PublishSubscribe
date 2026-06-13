@@ -103,6 +103,9 @@ namespace tools
 
     namespace linux_os
     {
+        inline constexpr std::uint64_t sched_deadline_nanosecond_coeff = 1000ULL;
+        inline constexpr std::uint64_t sched_deadline_floor_value = 0ULL;
+
         struct sched_attr
         {
             __u32 size;
@@ -166,11 +169,12 @@ namespace tools
             //     |<----------- Deadline ----------->|
             //     |<-------------- Period ------------------->|
 
-            constexpr const std::uint64_t nano_sec_coeff = 1000ULL;
-            constexpr const std::uint64_t floor_value = 0ULL;
             attr.sched_runtime = static_cast<std::uint64_t>(
-                std::max(floor_value, static_cast<std::uint64_t>(remaining_time.count()) * nano_sec_coeff));
-            attr.sched_deadline = static_cast<std::uint64_t>(period.count()) * nano_sec_coeff;
+                std::max(linux_os::sched_deadline_floor_value,
+                         static_cast<std::uint64_t>(remaining_time.count())
+                             * linux_os::sched_deadline_nanosecond_coeff));
+            attr.sched_deadline
+                = static_cast<std::uint64_t>(period.count()) * linux_os::sched_deadline_nanosecond_coeff;
             attr.sched_period = attr.sched_deadline;
             const int ret = sched_setattr(tid, &attr, flags); // NOLINT initialized by sched_setattr returned value
 
