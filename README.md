@@ -29,6 +29,12 @@ Goodies:
 
 [GitHub repository](https://github.com/type-one/PublishSubscribe)
 
+AI/Agent guidance files:
+
+- [CLAUDE.md](CLAUDE.md)
+- [AGENTS.md](AGENTS.md)
+- [.github/copilot-instructions.md](.github/copilot-instructions.md)
+
 ## What
 
 Small test program written in C++17 / C++20 / C++23 to implement a simple Publish/Subscribe pattern. The code is portable and lightweight.
