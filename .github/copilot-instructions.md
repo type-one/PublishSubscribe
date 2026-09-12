@@ -54,8 +54,31 @@ Example guard pattern:
 
 - Prefer RAII and clear ownership semantics.
 - Prefer STL containers/algorithms over custom low-level code when suitable.
+- Prefer `std::string` / `std::string_view` over raw C strings when ownership and
+	lifetime are clear.
+- Prefer `std::span<T>` (C++20) over raw pointer-and-length pairs or array
+	parameters for non-owning views over contiguous data. Guard it with a C++17
+	fallback such as `const T*` plus `size_t`, following the C++ Version Policy.
+- Prefer `std::format` (C++20) over `printf`/`snprintf`-style formatting in new
+	code for type-safe, composable text formatting. In C++17 code, use `snprintf`
+	or an existing project helper behind the same feature checks.
+- Prefer `<algorithm>` functions and range-based `for` loops when they make the
+	intent clearer than hand-written or index-based loops.
 - Use `tools/expected` for new result-style APIs where appropriate.
 - Keep public APIs simple, explicit, and consistent with existing `tools/*` style.
+
+## API and Ownership Guidance
+
+- Pass scalar values by value and heavier read-only objects by `const T&`.
+- Pass `std::string_view` and `std::span<T>` by value; both are small, cheap
+	non-owning views and must not be used to extend or transfer ownership.
+- When a constructor stores a `std::shared_ptr<T>` to express shared ownership,
+	take it by value and move it into the member. Use `const std::shared_ptr<T>&`
+	when the callee only observes the pointer during the call.
+- Move movable by-value constructor inputs into members.
+- Avoid passing `std::string_view` or `std::span<T>` by `const&`, owning raw
+	pointers, unnecessary copies at API boundaries, and implementation bodies for
+	non-templated classes inline in headers.
 
 ## Concurrency Preferences
 
