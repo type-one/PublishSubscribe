@@ -21,8 +21,8 @@ class latch {
 public:
   explicit latch(ptrdiff_t count) : counter_(count) {}
 
-  latch(const latch &) = delete;
-  latch &operator=(const latch &) = delete;
+  latch(const latch&) = delete;
+  latch& operator=(const latch&) = delete;
 
   ~latch();
 

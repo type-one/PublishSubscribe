@@ -27,20 +27,20 @@ template class small_unique_function<void()>;
 template struct forward_list_deleter<continuation>;
 template class once_consumable_stack<continuation>;
 
-void continuations_stack::push(continuation &&cnt) {
+void continuations_stack::push(continuation&& cnt) {
   if (!stack_.push(cnt))
     cnt();
 }
 
 void continuations_stack::execute() {
   auto continuations = stack_.consume();
-  for (auto &cnt : continuations)
+  for (auto& cnt : continuations)
     cnt();
 }
 
 bool continuations_stack::executed() const { return stack_.is_consumed(); }
 
-void wait(future_state_base &state) {
+void wait(future_state_base& state) {
   std::mutex mtx;
   std::condition_variable cv;
   bool ready = false;
@@ -56,26 +56,17 @@ void wait(future_state_base &state) {
 
 template class closable_queue<unique_function<void()>>;
 
-[[noreturn]] void throw_no_state() {
-  throw std::future_error{std::future_errc::no_state};
-}
+[[noreturn]] void throw_no_state() { throw std::future_error{std::future_errc::no_state}; }
 
-[[noreturn]] void throw_already_satisfied() {
-  throw std::future_error(std::future_errc::promise_already_satisfied);
-}
+[[noreturn]] void throw_already_satisfied() { throw std::future_error(std::future_errc::promise_already_satisfied); }
 
-[[noreturn]] void throw_already_retrieved() {
-  throw std::future_error(std::future_errc::future_already_retrieved);
-}
+[[noreturn]] void throw_already_retrieved() { throw std::future_error(std::future_errc::future_already_retrieved); }
 
 std::exception_ptr make_broken_promise() {
-  return std::make_exception_ptr(
-      std::future_error{std::future_errc::broken_promise});
+  return std::make_exception_ptr(std::future_error{std::future_errc::broken_promise});
 }
 
-void future_state_base::push(continuation &&cnt) {
-  this->continuations().push(std::move(cnt));
-}
+void future_state_base::push(continuation&& cnt) { this->continuations().push(std::move(cnt)); }
 
 } // namespace detail
 
@@ -84,10 +75,7 @@ namespace {
 // P0443R7 states that if task submitted to static_thread_pool exits via
 // exception then std::terminate is called. This behavior is established by
 // marking this function noexcept.
-void process_queue(
-  detail::closable_queue<unique_function<void()>> &queue,
-  const std::atomic<bool> &stopped
-) noexcept {
+void process_queue(detail::closable_queue<unique_function<void()>>& queue, const std::atomic<bool>& stopped) noexcept {
   unique_function<void()> task;
   while (!stopped.load(std::memory_order_relaxed) && queue.pop(task))
     task();
@@ -141,7 +129,8 @@ void latch::wait() const {
     cv_.notify_one();
 }
 
-template <> void future<void>::get() {
+template <>
+void future<void>::get() {
   if (!state_)
     throw std::future_error(std::future_errc::no_state);
   wait();
@@ -166,8 +155,7 @@ future<void> make_ready_future() {
 future<std::tuple<>> when_all() { return make_ready_future(std::tuple<>{}); }
 
 future<when_any_result<std::tuple<>>> when_any() {
-  return make_ready_future(when_any_result<std::tuple<>>{
-      static_cast<std::size_t>(-1), std::tuple<>{}});
+  return make_ready_future(when_any_result<std::tuple<>>{static_cast<std::size_t>(-1), std::tuple<>{}});
 }
 
 static_thread_pool::static_thread_pool(std::size_t num_threads) {
@@ -195,14 +183,14 @@ void static_thread_pool::attach() {
   cv_.notify_all();
 }
 
-void static_thread_pool::stop() { 
+void static_thread_pool::stop() {
   stopped_.store(true, std::memory_order_relaxed);
   queue_.close();
 }
 
 void static_thread_pool::wait() {
   queue_.close();
-  for (auto &thread : threads_) {
+  for (auto& thread : threads_) {
     if (thread.joinable())
       thread.join();
   }

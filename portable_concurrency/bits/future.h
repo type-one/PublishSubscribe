@@ -19,10 +19,9 @@ inline namespace cxx14_v1 {
  * @brief The class template future provides a mechanism to access the result of
  * asynchronous operations.
  */
-template <typename T> class future {
-  static_assert(
-      !detail::is_future<T>::value,
-      "future<future<T>> and future<shared_future<T>> are not allowed");
+template <typename T>
+class future {
+  static_assert(!detail::is_future<T>::value, "future<future<T>> and future<shared_future<T>> are not allowed");
 
 public:
   using value_type = T;
@@ -38,23 +37,23 @@ public:
    *
    * @post rhs.valid() == false
    */
-  future(future &&rhs) noexcept = default;
+  future(future&& rhs) noexcept = default;
   /**
    * Copy constructor is explicitly deleted. Future object is not copyable.
    */
-  future(const future &) = delete;
+  future(const future&) = delete;
 
   /**
    * Copy assignment operator is explicitly deleted. Future object is not
    * copyable.
    */
-  future &operator=(const future &) = delete;
+  future& operator=(const future&) = delete;
   /**
    * Move assignment
    *
    * @post rhs.valid() == false
    */
-  future &operator=(future &&rhs) noexcept = default;
+  future& operator=(future&& rhs) noexcept = default;
 
   /**
    * Destroys associated shared state and cancel not yet started operations.
@@ -87,12 +86,12 @@ public:
 
 #if !defined(PC_NO_DEPRECATED)
   template <typename Rep, typename Period>
-  [[deprecated("Use pc::timed_waiter instead")]] future_status
-  wait_for(const std::chrono::duration<Rep, Period> &rel_time) const;
+  [[deprecated("Use pc::timed_waiter instead")]] future_status wait_for(
+      const std::chrono::duration<Rep, Period>& rel_time) const;
 
   template <typename Clock, typename Duration>
-  [[deprecated("Use pc::timed_waiter instead")]] future_status
-  wait_until(const std::chrono::time_point<Clock, Duration> &abs_time) const;
+  [[deprecated("Use pc::timed_waiter instead")]] future_status wait_until(
+      const std::chrono::time_point<Clock, Duration>& abs_time) const;
 #endif
 
   /**
@@ -116,7 +115,8 @@ public:
    *
    * @note Thread of `notification` execution is unspecified.
    */
-  template <typename F> void notify(F &&notification);
+  template <typename F>
+  void notify(F&& notification);
 
   /**
    * Adds notification function to be called when this future object becomes
@@ -132,26 +132,26 @@ public:
    * most once. If `this->is_ready() == true` then `notification` is scheduled
    * for execution immediately.
    */
-  template <typename E, typename F> void notify(E &&exec, F &&notification);
+  template <typename E, typename F>
+  void notify(E&& exec, F&& notification);
 
   template <typename F>
-  PC_NODISCARD detail::cnt_future_t<F, future<T>> then(F &&f);
+  PC_NODISCARD detail::cnt_future_t<F, future<T>> then(F&& f);
 
   template <typename F>
-  PC_NODISCARD detail::add_future_t<detail::promise_arg_t<F, future>>
-  then(F &&f);
+  PC_NODISCARD detail::add_future_t<detail::promise_arg_t<F, future>> then(F&& f);
 
   template <typename E, typename F>
-  PC_NODISCARD detail::cnt_future_t<F, future<T>> then(E &&exec, F &&f);
+  PC_NODISCARD detail::cnt_future_t<F, future<T>> then(E&& exec, F&& f);
 
   template <typename E, typename F>
-  PC_NODISCARD detail::add_future_t<detail::promise_arg_t<F, future>>
-  then(E &&exec, F &&f);
+  PC_NODISCARD detail::add_future_t<detail::promise_arg_t<F, future>> then(E&& exec, F&& f);
 
-  template <typename F> PC_NODISCARD detail::cnt_future_t<F, T> next(F &&f);
+  template <typename F>
+  PC_NODISCARD detail::cnt_future_t<F, T> next(F&& f);
 
   template <typename E, typename F>
-  PC_NODISCARD detail::cnt_future_t<F, T> next(E &&exec, F &&f);
+  PC_NODISCARD detail::cnt_future_t<F, T> next(E&& exec, F&& f);
 
   /**
    * Prevents cancellation of the operations of this future value calculation on
@@ -162,7 +162,7 @@ public:
   future detach();
 
   // implementation detail
-  future(std::shared_ptr<detail::future_state<T>> &&state) noexcept;
+  future(std::shared_ptr<detail::future_state<T>>&& state) noexcept;
 
 #if defined(PC_HAS_COROUTINES)
   // Coroutines TS support
@@ -174,16 +174,15 @@ public:
 
 private:
   friend class shared_future<T>;
-  friend std::shared_ptr<detail::future_state<T>> &
-  detail::state_of<T>(future<T> &);
-  friend std::shared_ptr<detail::future_state<T>>
-  detail::state_of<T>(future<T> &&);
+  friend std::shared_ptr<detail::future_state<T>>& detail::state_of<T>(future<T>&);
+  friend std::shared_ptr<detail::future_state<T>> detail::state_of<T>(future<T>&&);
 
 private:
   std::shared_ptr<detail::future_state<T>> state_;
 };
 
-template <> void future<void>::get();
+template <>
+void future<void>::get();
 
 } // namespace cxx14_v1
 } // namespace portable_concurrency

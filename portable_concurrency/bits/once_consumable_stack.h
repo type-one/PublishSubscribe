@@ -7,51 +7,47 @@ namespace portable_concurrency {
 inline namespace cxx14_v1 {
 namespace detail {
 
-template <typename T> struct forward_list_node {
-  forward_list_node(T &&val, forward_list_node *next = nullptr)
-      : val(std::move(val)), next(next) {}
+template <typename T>
+struct forward_list_node {
+  forward_list_node(T&& val, forward_list_node* next = nullptr) : val(std::move(val)), next(next) {}
 
   virtual void deallocate_self() = 0;
 
   T val;
-  forward_list_node *next;
+  forward_list_node* next;
 
 protected:
   virtual ~forward_list_node() = default;
 };
 
-template <typename T> struct forward_list_deleter {
-  void operator()(forward_list_node<T> *head) noexcept;
+template <typename T>
+struct forward_list_deleter {
+  void operator()(forward_list_node<T>* head) noexcept;
 };
 
 template <typename T>
-using forward_list =
-    std::unique_ptr<forward_list_node<T>, forward_list_deleter<T>>;
+using forward_list = std::unique_ptr<forward_list_node<T>, forward_list_deleter<T>>;
 
 template <typename T, typename Alloc>
-forward_list<T> allocate_list_node(T &&val, const Alloc &alloc) {
+forward_list<T> allocate_list_node(T&& val, const Alloc& alloc) {
   struct node final : Alloc, forward_list_node<T> {
-    node(T &&val, const Alloc &alloc)
-        : Alloc(alloc), forward_list_node<T>(std::move(val)) {}
+    node(T&& val, const Alloc& alloc) : Alloc(alloc), forward_list_node<T>(std::move(val)) {}
 
-    Alloc &get_allocator() { return *this; }
+    Alloc& get_allocator() { return *this; }
 
     void deallocate_self() override {
-      using node_allocator =
-          typename std::allocator_traits<Alloc>::template rebind_alloc<node>;
+      using node_allocator = typename std::allocator_traits<Alloc>::template rebind_alloc<node>;
       node_allocator alloc{std::move(get_allocator())};
       std::allocator_traits<node_allocator>::destroy(alloc, this);
       std::allocator_traits<node_allocator>::deallocate(alloc, this, 1);
     }
   };
 
-  using node_allocator =
-      typename std::allocator_traits<Alloc>::template rebind_alloc<node>;
+  using node_allocator = typename std::allocator_traits<Alloc>::template rebind_alloc<node>;
   node_allocator nalloc{alloc};
   auto result = std::allocator_traits<node_allocator>::allocate(nalloc, 1);
   try {
-    std::allocator_traits<node_allocator>::construct(nalloc, result,
-                                                     std::move(val), alloc);
+    std::allocator_traits<node_allocator>::construct(nalloc, result, std::move(val), alloc);
   } catch (...) {
     std::allocator_traits<node_allocator>::deallocate(nalloc, result, 1);
     throw;
@@ -74,7 +70,8 @@ forward_list<T> allocate_list_node(T &&val, const Alloc &alloc) {
  * Last requrement allows consumer atomically trasfer data to producers with a
  * single operation of stack consumption.
  */
-template <typename T> class once_consumable_stack {
+template <typename T>
+class once_consumable_stack {
 public:
   once_consumable_stack() noexcept;
   ~once_consumable_stack();
@@ -90,9 +87,10 @@ public:
    * @note This function assumes that moving the value from an object and then
    * moving it back remains an object in initial state.
    */
-  bool push(T &val);
+  bool push(T& val);
 
-  template <typename Alloc> bool push(T &val, const Alloc &alloc) {
+  template <typename Alloc>
+  bool push(T& val, const Alloc& alloc) {
     forward_list<T> node = allocate_list_node(std::move(val), alloc);
     if (push(node))
       return true;
@@ -121,12 +119,12 @@ private:
   // Return address of some valid object which can not alias with
   // forward_list_node<T> instances. Can be used as marker in pointer
   // compariaions but must never be dereferenced.
-  forward_list_node<T> *consumed_marker() const noexcept;
+  forward_list_node<T>* consumed_marker() const noexcept;
 
-  bool push(forward_list<T> &node) noexcept;
+  bool push(forward_list<T>& node) noexcept;
 
 private:
-  std::atomic<forward_list_node<T> *> head_{nullptr};
+  std::atomic<forward_list_node<T>*> head_{nullptr};
 };
 
 } // namespace detail

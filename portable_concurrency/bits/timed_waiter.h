@@ -41,7 +41,7 @@ public:
    * @brief Constructs `timed_waiter` associated with @a fut object.
    */
   template <typename T>
-  explicit timed_waiter(future<T> &fut) : waiter_{std::make_shared<waiter>()} {
+  explicit timed_waiter(future<T>& fut) : waiter_{std::make_shared<waiter>()} {
     fut.notify([waiter = waiter_] {
       {
         std::lock_guard<std::mutex> lock{waiter->mutex};
@@ -54,8 +54,7 @@ public:
    * @brief Constructs `timed_waiter` associated with @a fut object.
    */
   template <typename T>
-  explicit timed_waiter(shared_future<T> &fut)
-      : waiter_{std::make_shared<waiter>()} {
+  explicit timed_waiter(shared_future<T>& fut) : waiter_{std::make_shared<waiter>()} {
     fut.notify([waiter = waiter_] {
       {
         std::lock_guard<std::mutex> lock{waiter->mutex};
@@ -70,11 +69,10 @@ public:
    * specified timeout duration.
    */
   template <typename Rep, typename Per>
-  future_status wait_for(const std::chrono::duration<Rep, Per> &dur) {
+  future_status wait_for(const std::chrono::duration<Rep, Per>& dur) {
     std::unique_lock<std::mutex> lk{waiter_->mutex};
-    return waiter_->cv.wait_for(lk, dur, [&] { return waiter_->notified; })
-               ? future_status::ready
-               : future_status::timeout;
+    return waiter_->cv.wait_for(lk, dur, [&] { return waiter_->notified; }) ? future_status::ready
+                                                                            : future_status::timeout;
   }
 
   /**
@@ -82,11 +80,10 @@ public:
    * time point has been reached.
    */
   template <typename Clock, typename Dur>
-  future_status wait_until(const std::chrono::time_point<Clock, Dur> &tp) {
+  future_status wait_until(const std::chrono::time_point<Clock, Dur>& tp) {
     std::unique_lock<std::mutex> lk{waiter_->mutex};
-    return waiter_->cv.wait_until(lk, tp, [&] { return waiter_->notified; })
-               ? future_status::ready
-               : future_status::timeout;
+    return waiter_->cv.wait_until(lk, tp, [&] { return waiter_->notified; }) ? future_status::ready
+                                                                             : future_status::timeout;
   }
 
 private:

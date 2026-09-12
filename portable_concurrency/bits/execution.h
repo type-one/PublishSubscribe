@@ -21,7 +21,8 @@ namespace portable_concurrency {
  *
  * @sa post
  */
-template <typename E> struct is_executor : std::false_type {};
+template <typename E>
+struct is_executor : std::false_type {};
 
 /**
  * @headerfile portable_concurrency/execution
@@ -34,7 +35,8 @@ template <typename E> struct is_executor : std::false_type {};
  */
 class inplace_executor_t {
 private:
-  template <typename Task> friend void post(inplace_executor_t, Task &&task) {
+  template <typename Task>
+  friend void post(inplace_executor_t, Task&& task) {
     std::forward<Task>(task)();
   }
 };
@@ -48,7 +50,8 @@ private:
  */
 constexpr inplace_executor_t inplace_executor;
 
-template <> struct is_executor<inplace_executor_t> : std::true_type {};
+template <>
+struct is_executor<inplace_executor_t> : std::true_type {};
 
 } // namespace portable_concurrency
 

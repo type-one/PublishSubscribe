@@ -7,12 +7,13 @@ namespace portable_concurrency {
 inline namespace cxx14_v1 {
 
 struct future_get_t {
-  template <typename T> decltype(auto) operator()(future<T> &f) const {
+  template <typename T>
+  decltype(auto) operator()(future<T>& f) const {
     return f.get();
   }
 
   template <typename T>
-  decltype(auto) operator()(const shared_future<T> &f) const {
+  decltype(auto) operator()(const shared_future<T>& f) const {
     return f.get();
   }
 };
@@ -39,11 +40,13 @@ struct future_get_t {
 constexpr future_get_t future_get{};
 
 struct future_ready_t {
-  template <typename T> bool operator()(const future<T> &f) const {
+  template <typename T>
+  bool operator()(const future<T>& f) const {
     return f.is_ready();
   }
 
-  template <typename T> bool operator()(const shared_future<T> &f) const {
+  template <typename T>
+  bool operator()(const shared_future<T>& f) const {
     return f.is_ready();
   }
 };

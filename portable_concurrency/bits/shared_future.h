@@ -19,24 +19,23 @@ inline namespace cxx14_v1 {
  * @brief The class template shared_future provides a mechanism to access the
  * result of asynchronous operations.
  */
-template <typename T> class shared_future {
-  static_assert(!detail::is_future<T>::value,
-                "shared_future<future<T> and shared_future<shared_future<T>> "
-                "are not allowed");
+template <typename T>
+class shared_future {
+  static_assert(!detail::is_future<T>::value, "shared_future<future<T> and shared_future<shared_future<T>> "
+                                              "are not allowed");
   using get_result_type =
-      std::conditional_t<std::is_void<T>::value, void,
-                         std::add_lvalue_reference_t<std::add_const_t<T>>>;
+      std::conditional_t<std::is_void<T>::value, void, std::add_lvalue_reference_t<std::add_const_t<T>>>;
 
 public:
   using value_type = T;
 
   shared_future() noexcept = default;
-  shared_future(const shared_future &) noexcept = default;
-  shared_future(shared_future &&) noexcept = default;
-  shared_future(future<T> &&rhs) noexcept;
+  shared_future(const shared_future&) noexcept = default;
+  shared_future(shared_future&&) noexcept = default;
+  shared_future(future<T>&& rhs) noexcept;
 
-  shared_future &operator=(const shared_future &) noexcept = default;
-  shared_future &operator=(shared_future &&) noexcept = default;
+  shared_future& operator=(const shared_future&) noexcept = default;
+  shared_future& operator=(shared_future&&) noexcept = default;
 
   ~shared_future() = default;
 
@@ -44,12 +43,12 @@ public:
 
 #if !defined(PC_NO_DEPRECATED)
   template <typename Rep, typename Period>
-  [[deprecated("Use pc::timed_waiter instead")]] future_status
-  wait_for(const std::chrono::duration<Rep, Period> &rel_time) const;
+  [[deprecated("Use pc::timed_waiter instead")]] future_status wait_for(
+      const std::chrono::duration<Rep, Period>& rel_time) const;
 
   template <typename Clock, typename Duration>
-  [[deprecated("Use pc::timed_waiter instead")]] future_status
-  wait_until(const std::chrono::time_point<Clock, Duration> &abs_time) const;
+  [[deprecated("Use pc::timed_waiter instead")]] future_status wait_until(
+      const std::chrono::time_point<Clock, Duration>& abs_time) const;
 #endif
 
   bool valid() const noexcept;
@@ -66,7 +65,8 @@ public:
    *
    * @note Thread of `notification` execution is unspecified.
    */
-  template <typename F> void notify(F &&notification);
+  template <typename F>
+  void notify(F&& notification);
 
   /**
    * Adds notification function to be called when this future object becomes
@@ -82,29 +82,26 @@ public:
    * most once. If `this->is_ready() == true` then `notification` is scheduled
    * for execution immediately.
    */
-  template <typename E, typename F> void notify(E &&exec, F &&notification);
+  template <typename E, typename F>
+  void notify(E&& exec, F&& notification);
 
   template <typename F>
-  PC_NODISCARD detail::cnt_future_t<F, shared_future<T>> then(F &&f) const;
+  PC_NODISCARD detail::cnt_future_t<F, shared_future<T>> then(F&& f) const;
 
   template <typename E, typename F>
-  PC_NODISCARD detail::cnt_future_t<F, shared_future<T>> then(E &&exec,
-                                                              F &&f) const;
+  PC_NODISCARD detail::cnt_future_t<F, shared_future<T>> then(E&& exec, F&& f) const;
 
   template <typename F>
-  PC_NODISCARD detail::cnt_future_t<F, get_result_type> next(F &&f) const;
+  PC_NODISCARD detail::cnt_future_t<F, get_result_type> next(F&& f) const;
 
   template <typename E, typename F>
-  PC_NODISCARD detail::cnt_future_t<F, get_result_type> next(E &&exec,
-                                                             F &&f) const;
+  PC_NODISCARD detail::cnt_future_t<F, get_result_type> next(E&& exec, F&& f) const;
 
   template <typename F>
-  PC_NODISCARD detail::add_future_t<detail::promise_arg_t<F, shared_future<T>>>
-  then(F &&f);
+  PC_NODISCARD detail::add_future_t<detail::promise_arg_t<F, shared_future<T>>> then(F&& f);
 
   template <typename E, typename F>
-  PC_NODISCARD detail::add_future_t<detail::promise_arg_t<F, shared_future<T>>>
-  then(E &&exec, F &&f);
+  PC_NODISCARD detail::add_future_t<detail::promise_arg_t<F, shared_future<T>>> then(E&& exec, F&& f);
 
   /**
    * Prevents cancellation of the operations of this shared_future value
@@ -115,7 +112,7 @@ public:
   shared_future detach();
 
   // Implementation detail
-  shared_future(std::shared_ptr<detail::future_state<T>> &&state) noexcept;
+  shared_future(std::shared_ptr<detail::future_state<T>>&& state) noexcept;
 
 #if defined(PC_HAS_COROUTINES)
   // Coroutines TS support
@@ -126,10 +123,8 @@ public:
 #endif
 
 private:
-  friend std::shared_ptr<detail::future_state<T>> &
-  detail::state_of<T>(shared_future<T> &);
-  friend std::shared_ptr<detail::future_state<T>>
-  detail::state_of<T>(shared_future<T> &&);
+  friend std::shared_ptr<detail::future_state<T>>& detail::state_of<T>(shared_future<T>&);
+  friend std::shared_ptr<detail::future_state<T>> detail::state_of<T>(shared_future<T>&&);
 
 private:
   std::shared_ptr<detail::future_state<T>> state_;

@@ -21,15 +21,13 @@ namespace detail {
 template <typename Sequence>
 class when_all_state final : public future_state<Sequence> {
 public:
-  when_all_state(Sequence &&futures)
-      : futures_(std::move(futures)),
-        operations_remains_(sequence_traits<Sequence>::size(futures_) + 1) {}
+  when_all_state(Sequence&& futures)
+      : futures_(std::move(futures)), operations_remains_(sequence_traits<Sequence>::size(futures_) + 1) {}
 
-  static std::shared_ptr<future_state<Sequence>> make(Sequence &&futures) {
+  static std::shared_ptr<future_state<Sequence>> make(Sequence&& futures) {
     auto state = std::make_shared<when_all_state<Sequence>>(std::move(futures));
-    sequence_traits<Sequence>::for_each(state->futures_, [state](auto &f) {
-      state_of(f)->continuations().push([state] { state->notify(); });
-    });
+    sequence_traits<Sequence>::for_each(
+        state->futures_, [state](auto& f) { state_of(f)->continuations().push([state] { state->notify(); }); });
     state->notify();
     return state;
   }
@@ -40,7 +38,7 @@ public:
     continuations_.execute();
   }
 
-  Sequence &value_ref() override {
+  Sequence& value_ref() override {
     assert(continuations_.executed());
     return futures_;
   }
@@ -50,7 +48,7 @@ public:
     return nullptr;
   }
 
-  continuations_stack &continuations() final { return continuations_; }
+  continuations_stack& continuations() final { return continuations_; }
 
 private:
   Sequence futures_;
@@ -75,15 +73,14 @@ PC_NODISCARD future<std::tuple<>> when_all();
  */
 #ifdef DOXYGEN
 template <typename... Futures>
-future<std::tuple<Futures...>> when_all(Futures &&...);
+future<std::tuple<Futures...>> when_all(Futures&&...);
 #else
 template <typename... Futures>
-PC_NODISCARD auto when_all(Futures &&...futures)
+PC_NODISCARD auto when_all(Futures&&... futures)
     -> std::enable_if_t<detail::are_futures<std::decay_t<Futures>...>::value,
-                        future<std::tuple<std::decay_t<Futures>...>>> {
+        future<std::tuple<std::decay_t<Futures>...>>> {
   using Sequence = std::tuple<std::decay_t<Futures>...>;
-  return {detail::when_all_state<Sequence>::make(
-      Sequence{std::forward<Futures>(futures)...})};
+  return {detail::when_all_state<Sequence>::make(Sequence{std::forward<Futures>(futures)...})};
 }
 #endif
 
@@ -103,29 +100,24 @@ PC_NODISCARD auto when_all(Futures &&...futures)
  */
 #ifdef DOXYGEN
 template <typename InputIt>
-future<std::vector<typename std::iterator_traits<InputIt>::value_type>>
-when_all(InputIt first, InputIt last);
+future<std::vector<typename std::iterator_traits<InputIt>::value_type>> when_all(InputIt first, InputIt last);
 #else
 template <typename InputIt>
-PC_NODISCARD auto when_all(InputIt first, InputIt last) -> std::enable_if_t<
-    detail::is_unique_future<
-        typename std::iterator_traits<InputIt>::value_type>::value,
-    future<std::vector<typename std::iterator_traits<InputIt>::value_type>>> {
-  using Sequence =
-      std::vector<typename std::iterator_traits<InputIt>::value_type>;
+PC_NODISCARD auto when_all(InputIt first, InputIt last)
+    -> std::enable_if_t<detail::is_unique_future<typename std::iterator_traits<InputIt>::value_type>::value,
+        future<std::vector<typename std::iterator_traits<InputIt>::value_type>>> {
+  using Sequence = std::vector<typename std::iterator_traits<InputIt>::value_type>;
   if (first == last)
     return make_ready_future(Sequence{});
-  return {detail::when_all_state<Sequence>::make(
-      Sequence{std::make_move_iterator(first), std::make_move_iterator(last)})};
+  return {
+      detail::when_all_state<Sequence>::make(Sequence{std::make_move_iterator(first), std::make_move_iterator(last)})};
 }
 
 template <typename InputIt>
-PC_NODISCARD auto when_all(InputIt first, InputIt last) -> std::enable_if_t<
-    detail::is_shared_future<
-        typename std::iterator_traits<InputIt>::value_type>::value,
-    future<std::vector<typename std::iterator_traits<InputIt>::value_type>>> {
-  using Sequence =
-      std::vector<typename std::iterator_traits<InputIt>::value_type>;
+PC_NODISCARD auto when_all(InputIt first, InputIt last)
+    -> std::enable_if_t<detail::is_shared_future<typename std::iterator_traits<InputIt>::value_type>::value,
+        future<std::vector<typename std::iterator_traits<InputIt>::value_type>>> {
+  using Sequence = std::vector<typename std::iterator_traits<InputIt>::value_type>;
   if (first == last)
     return make_ready_future(Sequence{});
   return {detail::when_all_state<Sequence>::make(Sequence{first, last})};
@@ -151,8 +143,7 @@ future<std::vector<Future, Alloc>> when_all(std::vector<Future, Alloc> futures);
 #else
 template <typename Future, typename Alloc>
 PC_NODISCARD auto when_all(std::vector<Future, Alloc> futures)
-    -> std::enable_if_t<detail::is_future<Future>::value,
-                        future<std::vector<Future, Alloc>>> {
+    -> std::enable_if_t<detail::is_future<Future>::value, future<std::vector<Future, Alloc>>> {
   using Sequence = std::vector<Future, Alloc>;
   return {detail::when_all_state<Sequence>::make(std::move(futures))};
 }
