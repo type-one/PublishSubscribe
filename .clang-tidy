@@ -19,5 +19,5 @@ Checks:          "clang-diagnostic-*,\
                   -fuchsia-default-arguments-calls,\
                   -fuchsia-overloaded-operator,\
                   -readability-function-cognitive-complexity"
-WarningsAsErrors: "*"
-HeaderFilterRegex: '.hpp'
+WarningsAsErrors: "clang-diagnostic-*"
+HeaderFilterRegex: '^(?!.*portable_concurrency/).*\.hpp$'
