@@ -151,7 +151,7 @@ namespace tools
         }
 #endif
 
-        void unsubscribe(const Topic& topic, sync_observer_shared_ptr observer)
+        void unsubscribe(const Topic& topic, const sync_observer_shared_ptr& observer)
         {
             std::unique_lock guard(m_mutex);
 
