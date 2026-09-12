@@ -789,6 +789,28 @@ void test_sync_priority_queue()
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
+void test_async_observer_queue_overflow()
+{
+    std::cout << "-- async observer queue overflow --" << std::endl;
+
+    tools::async_observer<std::string, std::string, tools::sync_ring_vector> observer(2U);
+    observer.inform("topic", "event-1", "producer");
+    observer.inform("topic", "event-2", "producer");
+    observer.inform("topic", "event-3-dropped", "producer");
+
+    std::cout << "overflow detected = " << std::boolalpha << observer.has_queue_overflow()
+              << ", dropped = " << observer.queue_overflow_count() << std::noboolalpha << std::endl;
+
+    const auto dropped_count = observer.consume_queue_overflow_count();
+    std::cout << "consumed dropped count = " << dropped_count << ", overflow pending = " << std::boolalpha
+              << observer.has_queue_overflow() << std::noboolalpha << std::endl;
+
+    const auto events = observer.pop_all_events();
+    std::cout << "queued events = " << events.size() << std::endl;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
 void test_sync_dictionary()
 {
     std::cout << "-- sync dictionary --" << std::endl;
@@ -2126,6 +2148,7 @@ int main(int argc, char* argv[])
     test_sync_ring_vector();
     test_sync_queue();
     test_sync_priority_queue();
+    test_async_observer_queue_overflow();
     test_sync_dictionary();
     test_expected();
     test_expected_unit_style();

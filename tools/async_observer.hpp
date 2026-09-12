@@ -35,6 +35,7 @@
 #if !defined(ASYNC_OBSERVER_HPP_)
 #define ASYNC_OBSERVER_HPP_
 
+#include <atomic>
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -50,6 +51,18 @@
 
 namespace tools
 {
+    template <typename Container, typename Entry, typename = void>
+    struct queue_push_reports_success : std::false_type
+    {
+    };
+
+    template <typename Container, typename Entry>
+    struct queue_push_reports_success<Container, Entry,
+        std::void_t<decltype(std::declval<Container&>().push(std::declval<Entry>()))>>
+        : std::is_same<decltype(std::declval<Container&>().push(std::declval<Entry>())), bool>
+    {
+    };
+
     /**
      * @brief A class that provides asynchronous observation capabilities.
      *
@@ -64,14 +77,25 @@ namespace tools
     public:
         using event_entry = std::tuple<Topic, Evt, std::string>;
 
-        async_observer() = default;
+        template <typename Queue = Sync_Container<event_entry>,
+            typename = std::enable_if_t<std::is_default_constructible_v<Queue>>>
+        async_observer()
+        {
+        }
+
+        template <typename Queue = Sync_Container<event_entry>,
+            typename = std::enable_if_t<std::is_constructible_v<Queue, std::size_t>>>
+        explicit async_observer(std::size_t queue_capacity)
+            : m_evt_queue(queue_capacity)
+        {
+        }
+
         virtual ~async_observer() = default;
 
         void inform(const Topic& topic, const Evt& event, const std::string& origin) override
         {
             // Virtual observer API keeps const references; enqueue copies into async storage.
-            enqueue_event(topic, event, origin);
-            m_wakeable.signal();
+            do_inform(topic, event, origin);
         }
 
         std::vector<event_entry> pop_all_events()
@@ -132,6 +156,21 @@ namespace tools
             return m_evt_queue.size();
         }
 
+        [[nodiscard]] bool has_queue_overflow() const noexcept
+        {
+            return queue_overflow_count() != 0U;
+        }
+
+        [[nodiscard]] std::size_t queue_overflow_count() const noexcept
+        {
+            return m_overflow_count.load(std::memory_order_relaxed);
+        }
+
+        std::size_t consume_queue_overflow_count() noexcept
+        {
+            return m_overflow_count.exchange(0U, std::memory_order_relaxed);
+        }
+
         void wait_for_events()
         {
             m_wakeable.wait_for_signal();
@@ -143,31 +182,34 @@ namespace tools
         }
 
     private:
-        // Internal enqueue helper used by inform() to preserve observer API semantics.
-#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
-        // C++20: requires clause constrains forwarded arguments to tuple-constructible ones.
         template <typename TopicArg, typename EvtArg, typename OriginArg>
-            requires std::is_constructible_v<Topic, TopicArg&&> && std::is_constructible_v<Evt, EvtArg&&>
-            && std::is_constructible_v<std::string, OriginArg&&>
-        void enqueue_event(TopicArg&& topic, EvtArg&& event, OriginArg&& origin)
+        void do_inform(TopicArg&& topic, EvtArg&& event, OriginArg&& origin)
         {
-            m_evt_queue.emplace(
-                std::forward<TopicArg>(topic), std::forward<EvtArg>(event), std::forward<OriginArg>(origin));
+            event_entry entry { std::forward<TopicArg>(topic), std::forward<EvtArg>(event),
+                std::forward<OriginArg>(origin) };
+
+            using queue_type = Sync_Container<event_entry>;
+            if constexpr (queue_push_reports_success<queue_type, event_entry>::value)
+            {
+                if (m_evt_queue.push(std::move(entry)))
+                {
+                    m_wakeable.signal();
+                }
+                else
+                {
+                    m_overflow_count.fetch_add(1U, std::memory_order_relaxed);
+                }
+            }
+            else
+            {
+                m_evt_queue.push(std::move(entry));
+                m_wakeable.signal();
+            }
         }
-#else
-        // C++17: std::enable_if_t provides equivalent SFINAE constraints.
-        template <typename TopicArg, typename EvtArg, typename OriginArg,
-            typename = std::enable_if_t<std::is_constructible_v<Topic, TopicArg&&>
-                && std::is_constructible_v<Evt, EvtArg&&> && std::is_constructible_v<std::string, OriginArg&&>>>
-        void enqueue_event(TopicArg&& topic, EvtArg&& event, OriginArg&& origin)
-        {
-            m_evt_queue.emplace(
-                std::forward<TopicArg>(topic), std::forward<EvtArg>(event), std::forward<OriginArg>(origin));
-        }
-#endif
 
         sync_object m_wakeable;
         Sync_Container<event_entry> m_evt_queue;
+        std::atomic<std::size_t> m_overflow_count { 0U };
     };
 
 }

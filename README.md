@@ -21,6 +21,8 @@ Goodies:
 - simple thread-safe and resizeable ring vector on top of std::vector
 - chronological time_list and thread-safe sync_time_list helpers
 - async_observer supports pluggable synchronized event containers (queue/priority_queue compatible)
+- bounded async_observer queues report dropped events through `has_queue_overflow()`,
+  `queue_overflow_count()`, and `consume_queue_overflow_count()`
 - queuable commands
 - lock-free ring-buffer
 - custom pool allocator for global new/new[]/delete/delete[]
