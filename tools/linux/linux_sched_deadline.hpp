@@ -169,10 +169,8 @@ namespace tools
             //     |<----------- Deadline ----------->|
             //     |<-------------- Period ------------------->|
 
-            attr.sched_runtime = static_cast<std::uint64_t>(
-                std::max(linux_os::sched_deadline_floor_value,
-                         static_cast<std::uint64_t>(remaining_time.count())
-                             * linux_os::sched_deadline_nanosecond_coeff));
+            attr.sched_runtime = static_cast<std::uint64_t>(std::max(linux_os::sched_deadline_floor_value,
+                static_cast<std::uint64_t>(remaining_time.count()) * linux_os::sched_deadline_nanosecond_coeff));
             attr.sched_deadline
                 = static_cast<std::uint64_t>(period.count()) * linux_os::sched_deadline_nanosecond_coeff;
             attr.sched_period = attr.sched_deadline;
