@@ -15,9 +15,11 @@ Checks:          "clang-diagnostic-*,\
                   -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
                   -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
                   -cppcoreguidelines-pro-type-reinterpret-cast,\
+                  -cppcoreguidelines-owning-memory,\
                   -bugprone-suspicious-include,\
                   -fuchsia-default-arguments-calls,\
                   -fuchsia-overloaded-operator,\
+                  -readability-use-concise-preprocessor-directives,\
                   -readability-function-cognitive-complexity"
 WarningsAsErrors: "clang-diagnostic-*"
 HeaderFilterRegex: '^(?!.*portable_concurrency/).*\.hpp$'
