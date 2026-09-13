@@ -756,7 +756,7 @@ void test_sync_priority_queue()
         }
     }
 
-    enum class pq_topic
+    enum class pq_topic : std::uint8_t
     {
         generic
     };
@@ -1307,7 +1307,7 @@ void test_histogram()
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-enum class my_topic
+enum class my_topic : std::uint8_t
 {
     generic,
     system,
@@ -1324,7 +1324,7 @@ public:
 
     void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
-        std::cout << "sync [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event ("
+        std::cout << "sync [topic " << static_cast<unsigned int>(topic) << "] received: event ("
                   << event << ") from " << origin << '\n';
     }
 
@@ -1348,7 +1348,7 @@ public:
 
     void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
-        std::cout << "async/push [topic " << static_cast<std::underlying_type<my_topic>::type>(topic)
+        std::cout << "async/push [topic " << static_cast<unsigned int>(topic)
                   << "] received: event (" << event << ") from " << origin << '\n';
 
         base_async_observer::inform(topic, event, origin);
@@ -1370,7 +1370,7 @@ private:
                 {
                     auto& [topic, event, origin] = *entry;
 
-                    std::cout << "async/pop [topic " << static_cast<std::underlying_type<my_topic>::type>(topic)
+                    std::cout << "async/pop [topic " << static_cast<unsigned int>(topic)
                               << "] received: event (" << event << ") from " << origin << '\n';
                 }
             }
@@ -1425,7 +1425,7 @@ void test_publish_subscribe()
     subject1->subscribe(my_topic::generic, "loose_coupled_handler_1",
         [](const my_topic& topic, const std::string& event, const std::string& origin)
         {
-            std::cout << "handler [topic " << static_cast<std::underlying_type<my_topic>::type>(topic)
+            std::cout << "handler [topic " << static_cast<unsigned int>(topic)
                       << "] received: event (" << event << ") from " << origin << '\n';
         });
 
@@ -2018,7 +2018,7 @@ namespace
     constexpr std::size_t ALLOC_MAX_SIZE = 512;
     constexpr std::size_t ALLOC_ITERATIONS = 10000000;
 
-    enum class alloc_type
+    enum class alloc_type : std::uint8_t
     {
         new_object,
         new_array
