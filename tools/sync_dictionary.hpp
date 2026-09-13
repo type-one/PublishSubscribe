@@ -47,6 +47,7 @@
 #include <mutex>
 #include <optional>
 #include <shared_mutex>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -60,6 +61,39 @@
 
 namespace tools
 {
+    namespace detail
+    {
+        // detects a container whose find() accepts a heterogeneous key (transparent comparator, e.g. std::less<>)
+        template <typename Container, typename Key, typename = void>
+        struct has_transparent_find : std::false_type
+        {
+        };
+
+        template <typename Container, typename Key>
+        struct has_transparent_find<Container, Key,
+            std::void_t<decltype(std::declval<const Container&>().find(std::declval<const Key&>()))>> : std::true_type
+        {
+        };
+
+        template <typename Container, typename Key>
+        inline constexpr bool has_transparent_find_v = has_transparent_find<Container, Key>::value;
+
+        // detects a container whose erase() accepts a heterogeneous key (transparent comparator, e.g. std::less<>)
+        template <typename Container, typename Key, typename = void>
+        struct has_transparent_erase : std::false_type
+        {
+        };
+
+        template <typename Container, typename Key>
+        struct has_transparent_erase<Container, Key,
+            std::void_t<decltype(std::declval<Container&>().erase(std::declval<const Key&>()))>> : std::true_type
+        {
+        };
+
+        template <typename Container, typename Key>
+        inline constexpr bool has_transparent_erase_v = has_transparent_erase<Container, Key>::value;
+    }
+
     /**
      * @brief A thread-safe dictionary class.
      *
@@ -135,6 +169,32 @@ namespace tools
             m_dictionary.erase(key);
         }
 
+        // heterogeneous lookup: accepts std::string_view or any type usable to build/match K
+        // (e.g. std::less<> transparent comparator), avoiding a temporary K construction when possible
+        template <typename KeyArg>
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+            requires(!std::is_same_v<std::decay_t<KeyArg>, K>)
+            && (std::is_constructible_v<K, KeyArg> || detail::has_transparent_erase_v<TDictionary, KeyArg>)
+#endif
+        auto remove(const KeyArg& key)
+#if !((__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L)))
+            -> typename std::enable_if<!std::is_same<typename std::decay<KeyArg>::type, K>::value
+                    && (std::is_constructible<K, KeyArg>::value
+                        || detail::has_transparent_erase_v<TDictionary, KeyArg>),
+                void>::type
+#endif
+        {
+            std::unique_lock guard(m_mutex);
+            if constexpr (detail::has_transparent_erase_v<TDictionary, KeyArg>)
+            {
+                m_dictionary.erase(key);
+            }
+            else
+            {
+                m_dictionary.erase(K(key));
+            }
+        }
+
         void add_collection(const std::map<K, T>& collection)
         {
             (void)add_range(collection.begin(), collection.end());
@@ -201,6 +261,30 @@ namespace tools
 #endif
         }
 
+        // heterogeneous lookup: accepts std::string_view or any type usable to build/match K
+        template <typename KeyArg>
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+            requires(!std::is_same_v<std::decay_t<KeyArg>, K>)
+            && (std::is_constructible_v<K, KeyArg> || detail::has_transparent_find_v<TDictionary, KeyArg>)
+#endif
+        [[nodiscard]] auto contains(const KeyArg& key) const
+#if !((__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L)))
+            -> typename std::enable_if<!std::is_same<typename std::decay<KeyArg>::type, K>::value
+                    && (std::is_constructible<K, KeyArg>::value || detail::has_transparent_find_v<TDictionary, KeyArg>),
+                bool>::type
+#endif
+        {
+            std::shared_lock guard(m_mutex);
+            if constexpr (detail::has_transparent_find_v<TDictionary, KeyArg>)
+            {
+                return m_dictionary.find(key) != m_dictionary.cend();
+            }
+            else
+            {
+                return m_dictionary.find(K(key)) != m_dictionary.cend();
+            }
+        }
+
         std::optional<T> find(const K& key) const
         {
             std::optional<T> result;
@@ -209,6 +293,40 @@ namespace tools
             if (m_dictionary.cend() != itk)
             {
                 result = itk->second;
+            }
+            return result;
+        }
+
+        // heterogeneous lookup: accepts std::string_view or any type usable to build/match K
+        template <typename KeyArg>
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+            requires(!std::is_same_v<std::decay_t<KeyArg>, K>)
+            && (std::is_constructible_v<K, KeyArg> || detail::has_transparent_find_v<TDictionary, KeyArg>)
+#endif
+        auto find(const KeyArg& key) const
+#if !((__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L)))
+            -> typename std::enable_if<!std::is_same<typename std::decay<KeyArg>::type, K>::value
+                    && (std::is_constructible<K, KeyArg>::value || detail::has_transparent_find_v<TDictionary, KeyArg>),
+                std::optional<T>>::type
+#endif
+        {
+            std::optional<T> result;
+            std::shared_lock guard(m_mutex);
+            if constexpr (detail::has_transparent_find_v<TDictionary, KeyArg>)
+            {
+                const auto& itk = m_dictionary.find(key);
+                if (m_dictionary.cend() != itk)
+                {
+                    result = itk->second;
+                }
+            }
+            else
+            {
+                const auto& itk = m_dictionary.find(K(key));
+                if (m_dictionary.cend() != itk)
+                {
+                    result = itk->second;
+                }
             }
             return result;
         }

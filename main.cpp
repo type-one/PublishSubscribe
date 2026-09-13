@@ -34,6 +34,7 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -865,6 +866,22 @@ void test_sync_dictionary()
     {
         std::cout << "  " << key << " => " << value << '\n';
     }
+
+    // heterogeneous lookup: query/erase a std::string-keyed dictionary with std::string_view,
+    // avoiding a temporary std::string construction
+    const std::string_view view_key = "k1";
+    std::cout << "contains(string_view k1) = " << std::boolalpha << str_dict.contains(view_key) << std::noboolalpha
+              << '\n';
+
+    const auto view_result = str_dict.find(view_key);
+    if (view_result.has_value())
+    {
+        std::cout << "find(string_view k1) = " << *view_result << '\n';
+    }
+
+    str_dict.remove(view_key);
+    std::cout << "contains(string_view k1) after remove = " << std::boolalpha << str_dict.contains(view_key)
+              << std::noboolalpha << '\n';
 
     str_dict.clear();
     std::cout << "dictionary empty after clear: " << std::boolalpha << str_dict.empty() << std::noboolalpha << '\n';
