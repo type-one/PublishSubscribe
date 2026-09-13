@@ -139,29 +139,55 @@ namespace tools
             m_dictionary.insert_or_assign(std::move(key), std::move(value));
         }
 
-        // perfect forwarding: constructs key and value in-place from arbitrary constructor arguments
+        // heterogeneous overload: accepts std::string_view (or any other type explicitly convertible to K/T),
+        // since std::string's constructor from a string_view-like type is explicit and would not bind to
+        // the exact-type overloads above
+        template <typename KU, typename TU>
+#if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
+            requires std::is_constructible_v<K, KU> && std::is_constructible_v<T, TU>
+#endif
+        auto add(KU&& key, TU&& value)
+#if !((__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L)))
+            -> typename std::enable_if<std::is_constructible<K, KU>::value && std::is_constructible<T, TU>::value,
+                void>::type
+#endif
+        {
+            std::unique_lock guard(m_mutex);
+            m_dictionary.insert_or_assign(K(std::forward<KU>(key)), T(std::forward<TU>(value)));
+        }
+
+        // perfect forwarding: constructs key and value in-place from arbitrary constructor arguments;
+        // key and value argument packs are each wrapped in a std::tuple so the two packs can be told apart
+        // (a single parameter list with two trailing packs cannot be deduced unambiguously)
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
         // C++20: requires clause constrains the template to valid K and T constructors
         template <typename... KeyArgs, typename... ValueArgs>
             requires std::is_constructible_v<K, KeyArgs...> && std::is_constructible_v<T, ValueArgs...>
-        void add_emplace(KeyArgs&&... key_args, ValueArgs&&... value_args)
+        void add_emplace(std::tuple<KeyArgs...> key_args, std::tuple<ValueArgs...> value_args)
         {
             std::unique_lock guard(m_mutex);
-            m_dictionary.insert_or_assign(
-                K(std::forward<KeyArgs>(key_args)...), T(std::forward<ValueArgs>(value_args)...));
+            auto key = std::apply([](auto&&... args) { return K(std::forward<decltype(args)>(args)...); },
+                std::move(key_args));
+            auto value = std::apply([](auto&&... args) { return T(std::forward<decltype(args)>(args)...); },
+                std::move(value_args));
+            m_dictionary.insert_or_assign(std::move(key), std::move(value));
         }
 #else
         // C++17: std::enable_if_t provides equivalent SFINAE constraint
         template <typename... KeyArgs, typename... ValueArgs,
             typename
             = std::enable_if_t<std::is_constructible_v<K, KeyArgs...> && std::is_constructible_v<T, ValueArgs...>>>
-        void add_emplace(KeyArgs&&... key_args, ValueArgs&&... value_args)
+        void add_emplace(std::tuple<KeyArgs...> key_args, std::tuple<ValueArgs...> value_args)
         {
             std::unique_lock guard(m_mutex);
-            m_dictionary.insert_or_assign(
-                K(std::forward<KeyArgs>(key_args)...), T(std::forward<ValueArgs>(value_args)...));
+            auto key = std::apply([](auto&&... args) { return K(std::forward<decltype(args)>(args)...); },
+                std::move(key_args));
+            auto value = std::apply([](auto&&... args) { return T(std::forward<decltype(args)>(args)...); },
+                std::move(value_args));
+            m_dictionary.insert_or_assign(std::move(key), std::move(value));
         }
 #endif
+
 
         void remove(const K& key)
         {

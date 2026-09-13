@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.12)
 
 # set the project name and version
 project(PublishSubscribe VERSION 1.0)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # https://stackoverflow.com/questions/11944060/how-to-detect-target-architecture-using-cmake
 
@@ -135,20 +136,93 @@ set(PORTABLE_CONCURRENCY_SRC
 )
 
 set(TARGET_SRC
-    main.cpp
     "${PORTABLE_CONCURRENCY_SRC}"
     "${TARGET_TOOLS_SRC}"
 )
 
 include_directories("${PROJECT_SOURCE_DIR}")
 
-add_executable(publish_subscribe
+# framework code as a static library so it can be shared between the main
+# executable and the test executable below
+add_library(framework_modules STATIC
     "${TARGET_SRC}"
     "${TARGET_H}"
 )
+target_include_directories(framework_modules PUBLIC "${PROJECT_SOURCE_DIR}")
+
+add_executable(publish_subscribe
+    main.cpp
+)
+target_link_libraries(publish_subscribe PRIVATE framework_modules)
 
 if(LINUX)
-    target_link_libraries(publish_subscribe -lm -lpthread)
+    target_link_libraries(framework_modules PUBLIC -lm -lpthread)
 elseif(WIN32)
-    target_link_libraries(publish_subscribe)
+    target_link_libraries(framework_modules PUBLIC)
 endif()
+
+################################
+# Google Test
+################################
+
+# https://matgomes.com/integrate-google-test-into-cmake/
+include(FetchContent)
+
+find_package(GTest 1.11.0 QUIET)
+if(GTest_FOUND)
+    message("Google Test found")
+else()
+    message(STATUS "Google Test: not found locally, fetching from release archive...")
+
+    set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
+
+    FetchContent_Declare(
+        googletest
+        URL      https://github.com/google/googletest/archive/refs/tags/release-1.11.0.tar.gz
+        URL_HASH SHA256=b4870bf121ff7795ba20d20bcdd8627b8e088f2d1dab299a031c1034eddc93d5
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+
+    if(MSVC OR MSYS OR MINGW)
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    endif()
+
+    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+    set(BUILD_GTEST ON CACHE BOOL "" FORCE)
+
+    FetchContent_MakeAvailable(googletest)
+endif()
+
+if(TARGET GTest::gtest_main)
+    set(GTEST_MAIN_TARGET GTest::gtest_main)
+elseif(TARGET gtest_main)
+    set(GTEST_MAIN_TARGET gtest_main)
+else()
+    message(FATAL_ERROR "GoogleTest main target not available")
+endif()
+
+include(GoogleTest)
+enable_testing()
+
+################################
+# Tests
+################################
+
+# Add your test files here
+set(TEST_SOURCES
+    tests/test_sync_dictionary.cpp
+)
+
+add_executable(publish_subscribe_tests "${TEST_SOURCES}")
+
+# Static analysis of production code is enough: tests are excluded from clang-tidy.
+set_target_properties(publish_subscribe_tests PROPERTIES CXX_CLANG_TIDY "")
+
+target_link_libraries(publish_subscribe_tests PRIVATE framework_modules ${GTEST_MAIN_TARGET})
+
+if(LINUX)
+    target_link_libraries(publish_subscribe_tests PRIVATE -lpthread)
+endif()
+
+gtest_discover_tests(publish_subscribe_tests)
+
