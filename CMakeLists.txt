@@ -209,8 +209,27 @@ enable_testing()
 ################################
 
 # Add your test files here
+# TODO: tests ported from PublishSubscribeESP32 are limited to tools/ present in both
+# repos; that repo also has critical_section, cond_var, cpptime, bytepack, cJSON/cjsonpp,
+# gzip_wrapper, memory_pipe, timer_scheduler, CException, data_task, generic_task and fpm,
+# none of which exist here, so their tests were intentionally not ported.
 set(TEST_SOURCES
+    tests/test_async_observer.cpp
+    tests/test_histogram.cpp
+    tests/test_lock_free_ring_buffer.cpp
+    tests/test_periodic_task.cpp
+    tests/test_ring_buffer.cpp
+    tests/test_ring_vector.cpp
     tests/test_sync_dictionary.cpp
+    tests/test_sync_object.cpp
+    tests/test_sync_observer.cpp
+    tests/test_sync_priority_queue.cpp
+    tests/test_sync_queue.cpp
+    tests/test_sync_ring_buffer.cpp
+    tests/test_sync_ring_vector.cpp
+    tests/test_sync_time_list.cpp
+    tests/test_time_list.cpp
+    tests/test_worker_task.cpp
 )
 
 add_executable(publish_subscribe_tests "${TEST_SOURCES}")
