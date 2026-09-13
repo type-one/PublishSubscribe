@@ -155,8 +155,7 @@ void test_ring_buffer()
     tools::ring_buffer<std::string, 4U> small_queue;
     std::vector<std::string> overflow_batch = { "A", "B", "C", "D", "E" };
     const auto inserted_limited = small_queue.push_range(overflow_batch.begin(), overflow_batch.end());
-    std::cout << "inserted in capacity-limited buffer: " << inserted_limited << " / " << overflow_batch.size()
-              << '\n';
+    std::cout << "inserted in capacity-limited buffer: " << inserted_limited << " / " << overflow_batch.size() << '\n';
     std::cout << "small queue full: " << std::boolalpha << small_queue.full() << std::noboolalpha << '\n';
 
     std::cout << "drain capacity-limited buffer:" << '\n';
@@ -775,9 +774,9 @@ void test_sync_priority_queue()
     // async_observer can swap sync_queue for sync_priority_queue transparently.
     tools::async_observer<pq_topic, priority_event, tools::sync_priority_queue> observer;
 
-    observer.inform(pq_topic::generic, priority_event { .priority=3, .message="low" }, "worker");
-    observer.inform(pq_topic::generic, priority_event { .priority=1, .message="high" }, "worker");
-    observer.inform(pq_topic::generic, priority_event { .priority=2, .message="medium" }, "worker");
+    observer.inform(pq_topic::generic, priority_event { .priority = 3, .message = "low" }, "worker");
+    observer.inform(pq_topic::generic, priority_event { .priority = 1, .message = "high" }, "worker");
+    observer.inform(pq_topic::generic, priority_event { .priority = 2, .message = "medium" }, "worker");
 
     auto events = observer.pop_all_events();
     std::cout << "async_observer priority order:" << '\n';
@@ -868,8 +867,7 @@ void test_sync_dictionary()
     }
 
     str_dict.clear();
-    std::cout << "dictionary empty after clear: " << std::boolalpha << str_dict.empty() << std::noboolalpha
-              << '\n';
+    std::cout << "dictionary empty after clear: " << std::boolalpha << str_dict.empty() << std::noboolalpha << '\n';
 
     // same API, alternate backing container.
     tools::sync_dictionary<std::string, std::string, std::unordered_map<std::string, std::string>> hash_dict;
@@ -1319,13 +1317,12 @@ class my_observer : public base_observer
 {
 public:
     my_observer() = default;
-    ~my_observer() override
-    = default;
+    ~my_observer() override = default;
 
     void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
-        std::cout << "sync [topic " << static_cast<unsigned int>(topic) << "] received: event ("
-                  << event << ") from " << origin << '\n';
+        std::cout << "sync [topic " << static_cast<unsigned int>(topic) << "] received: event (" << event << ") from "
+                  << origin << '\n';
     }
 
 private:
@@ -1348,8 +1345,8 @@ public:
 
     void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
-        std::cout << "async/push [topic " << static_cast<unsigned int>(topic)
-                  << "] received: event (" << event << ") from " << origin << '\n';
+        std::cout << "async/push [topic " << static_cast<unsigned int>(topic) << "] received: event (" << event
+                  << ") from " << origin << '\n';
 
         base_async_observer::inform(topic, event, origin);
     }
@@ -1370,8 +1367,8 @@ private:
                 {
                     auto& [topic, event, origin] = *entry;
 
-                    std::cout << "async/pop [topic " << static_cast<unsigned int>(topic)
-                              << "] received: event (" << event << ") from " << origin << '\n';
+                    std::cout << "async/pop [topic " << static_cast<unsigned int>(topic) << "] received: event ("
+                              << event << ") from " << origin << '\n';
                 }
             }
         }
@@ -1391,8 +1388,7 @@ public:
     {
     }
 
-    ~my_subject() override
-    = default;
+    ~my_subject() override = default;
 
     void publish(const my_topic& topic, const std::string& event) const override
     {
@@ -1425,8 +1421,8 @@ void test_publish_subscribe()
     subject1->subscribe(my_topic::generic, "loose_coupled_handler_1",
         [](const my_topic& topic, const std::string& event, const std::string& origin)
         {
-            std::cout << "handler [topic " << static_cast<unsigned int>(topic)
-                      << "] received: event (" << event << ") from " << origin << '\n';
+            std::cout << "handler [topic " << static_cast<unsigned int>(topic) << "] received: event (" << event
+                      << ") from " << origin << '\n';
         });
 
     subject1->publish(my_topic::generic, "toto");
@@ -1499,8 +1495,7 @@ class my_collector : public base_observer
 {
 public:
     my_collector() = default;
-    ~my_collector() override
-    = default;
+    ~my_collector() override = default;
 
     void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
@@ -1513,8 +1508,7 @@ public:
     void display_stats()
     {
         const auto top = m_histogram.top();
-        std::cout << '\n'
-                  << "value " << top << " appears " << m_histogram.top_occurence() << " times" << '\n';
+        std::cout << '\n' << "value " << top << " appears " << m_histogram.top_occurence() << " times" << '\n';
         const auto avg = m_histogram.average();
         std::cout << "average value is " << avg << '\n';
         std::cout << "median value is " << m_histogram.median() << '\n';
@@ -1523,8 +1517,7 @@ public:
         const auto std_deviation = m_histogram.standard_deviation(variance);
         std::cout << "standard deviation is " << std_deviation << '\n';
         std::cout << "gaussian probability of [" << std::floor(top) << "," << std::ceil(top) << "] occuring is "
-                  << m_histogram.gaussian_probability(std::floor(top), std::ceil(top), avg, std_deviation, 100)
-                  << '\n';
+                  << m_histogram.gaussian_probability(std::floor(top), std::ceil(top), avg, std_deviation, 100) << '\n';
     }
 
 private:
@@ -1923,7 +1916,8 @@ void test_portable_concurrency_test_parity()
         auto promise_and_future = portable_concurrency::make_promise<int>();
         auto shared = promise_and_future.second.share();
 
-        auto continuation = shared.then([](const portable_concurrency::shared_future<int>& src) { return src.get() + 1; });
+        auto continuation
+            = shared.then([](const portable_concurrency::shared_future<int>& src) { return src.get() + 1; });
 
         check(shared.valid(), "shared_future.then keeps source future valid");
         promise_and_future.first.set_value(10);
