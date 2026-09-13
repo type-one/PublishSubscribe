@@ -1935,25 +1935,25 @@ void test_portable_concurrency_test_parity()
 
 #if defined(PC_HAS_COROUTINES)
 portable_concurrency::future<int> worker_task_coro_job(
-    my_worker_task& task, const std::shared_ptr<my_worker_task_context>& context, int value)
+    my_worker_task* task, std::shared_ptr<my_worker_task_context> context, int value)
 {
     std::cout << "coroutine started on thread " << std::this_thread::get_id() << '\n';
 
     // Hop to the worker thread before computing the result.
-    co_await task.schedule();
+    co_await task->schedule();
 
     std::cout << "coroutine resumed on worker thread " << std::this_thread::get_id() << '\n';
     context->loop_counter++;
     co_return value * 3;
 }
 
-portable_concurrency::future<int> worker_task_mixed_coro_job(my_worker_task& task,
-    const std::shared_ptr<my_worker_task_context>& context, portable_concurrency::future<int> async_value)
+portable_concurrency::future<int> worker_task_mixed_coro_job(my_worker_task* task,
+    std::shared_ptr<my_worker_task_context> context, portable_concurrency::future<int> async_value)
 {
     std::cout << "mixed coroutine started on thread " << std::this_thread::get_id() << '\n';
 
     // Switch coroutine execution to the worker thread.
-    co_await task.schedule();
+    co_await task->schedule();
 
     std::cout << "mixed coroutine resumed on worker thread " << std::this_thread::get_id() << '\n';
 
@@ -1971,7 +1971,7 @@ void test_worker_tasks_coroutine_schedule()
     auto task = std::make_unique<my_worker_task>(context, "worker_async_coro");
 
     auto result_future
-        = worker_task_coro_job(*task, context, 14)
+        = worker_task_coro_job(task.get(), context, 14)
               .then(task->as_executor(), [](portable_concurrency::future<int> previous) { return previous.get() + 2; });
 
     const auto result = result_future.get();
@@ -2003,7 +2003,7 @@ void test_worker_tasks_mixed_execution()
         6);
 
     auto mixed_result_future
-        = worker_task_mixed_coro_job(*task, context, std::move(async_value))
+        = worker_task_mixed_coro_job(task.get(), context, std::move(async_value))
               .then(task->as_executor(), [](portable_concurrency::future<int> previous) { return previous.get() + 1; });
 
     const auto mixed_result = mixed_result_future.get();
