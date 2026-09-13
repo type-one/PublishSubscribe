@@ -117,7 +117,7 @@ void drain_sync_ring_vector(tools::sync_ring_vector<T>& vec)
 
 void test_ring_buffer()
 {
-    std::cout << "-- ring buffer --" << std::endl;
+    std::cout << "-- ring buffer --" << '\n';
     tools::ring_buffer<std::string, 64U> str_queue;
 
     // emplace: construct string directly in the buffer
@@ -129,26 +129,26 @@ void test_ring_buffer()
 
     auto item = str_queue.front();
 
-    std::cout << "front after emplace/push: " << item << std::endl;
+    std::cout << "front after emplace/push: " << item << '\n';
 
-    std::cout << "drain initial content:" << std::endl;
+    std::cout << "drain initial content:" << '\n';
     drain_ring_buffer(str_queue);
 
     // push_range (C++17): iterator-pair insertion
     std::vector<std::string> batch = { "alpha", "beta", "gamma" };
     const auto inserted_pair = str_queue.push_range(batch.begin(), batch.end());
-    std::cout << "inserted with iterator-pair: " << inserted_pair << std::endl;
+    std::cout << "inserted with iterator-pair: " << inserted_pair << '\n';
 
     // pop_range (C++17): iterator-pair batch extraction
     std::array<std::string, 2> popped_pair {};
     const auto popped_pair_count = str_queue.pop_range(popped_pair.begin(), popped_pair.end());
-    std::cout << "popped with iterator-pair: " << popped_pair_count << std::endl;
+    std::cout << "popped with iterator-pair: " << popped_pair_count << '\n';
     for (std::size_t i = 0; i < popped_pair_count; ++i)
     {
-        std::cout << "  " << popped_pair[i] << std::endl;
+        std::cout << "  " << popped_pair[i] << '\n';
     }
 
-    std::cout << "drain iterator-pair batch:" << std::endl;
+    std::cout << "drain iterator-pair batch:" << '\n';
     drain_ring_buffer(str_queue);
 
     // capacity-bound behavior: insertion stops when full
@@ -156,10 +156,10 @@ void test_ring_buffer()
     std::vector<std::string> overflow_batch = { "A", "B", "C", "D", "E" };
     const auto inserted_limited = small_queue.push_range(overflow_batch.begin(), overflow_batch.end());
     std::cout << "inserted in capacity-limited buffer: " << inserted_limited << " / " << overflow_batch.size()
-              << std::endl;
-    std::cout << "small queue full: " << std::boolalpha << small_queue.full() << std::noboolalpha << std::endl;
+              << '\n';
+    std::cout << "small queue full: " << std::boolalpha << small_queue.full() << std::noboolalpha << '\n';
 
-    std::cout << "drain capacity-limited buffer:" << std::endl;
+    std::cout << "drain capacity-limited buffer:" << '\n';
     drain_ring_buffer(small_queue);
 
     // reject-on-full mode (single push)
@@ -169,8 +169,8 @@ void test_ring_buffer()
     reject_queue.push("R3");
     const bool reject_single_ok = reject_queue.push("R4");
     std::cout << "reject mode single push accepted extra item: " << std::boolalpha << reject_single_ok
-              << std::noboolalpha << std::endl;
-    std::cout << "reject mode contents:" << std::endl;
+              << std::noboolalpha << '\n';
+    std::cout << "reject mode contents:" << '\n';
     drain_ring_buffer(reject_queue);
 
     // overwrite-on-full mode (single push)
@@ -180,8 +180,8 @@ void test_ring_buffer()
     overwrite_queue.push("O3");
     const bool overwrite_single_happened = overwrite_queue.push_overwrite("O4");
     std::cout << "overwrite mode single push evicted oldest: " << std::boolalpha << overwrite_single_happened
-              << std::noboolalpha << std::endl;
-    std::cout << "overwrite mode contents (recent history):" << std::endl;
+              << std::noboolalpha << '\n';
+    std::cout << "overwrite mode contents (recent history):" << '\n';
     drain_ring_buffer(overwrite_queue);
 
     // overwrite-on-full mode (push_range)
@@ -190,35 +190,35 @@ void test_ring_buffer()
     const auto overwrite_result
         = overwrite_range_queue.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
     std::cout << "overwrite range inserted=" << overwrite_result.inserted
-              << " overwritten=" << overwrite_result.overwritten << std::endl;
-    std::cout << "overwrite range contents (recent history):" << std::endl;
+              << " overwritten=" << overwrite_result.overwritten << '\n';
+    std::cout << "overwrite range contents (recent history):" << '\n';
     drain_ring_buffer(overwrite_range_queue);
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
     // push_range (C++20): range overload with a container
     std::vector<std::string> range_batch = { "one", "two", "three" };
     const auto inserted_range = str_queue.push_range(range_batch);
-    std::cout << "inserted with C++20 range: " << inserted_range << std::endl;
+    std::cout << "inserted with C++20 range: " << inserted_range << '\n';
 
     // pop_range (C++20): span-based batch extraction
     std::array<std::string, 4> popped_span {};
     const auto popped_span_count = str_queue.pop_range(std::span<std::string>(popped_span));
-    std::cout << "popped with C++20 span: " << popped_span_count << std::endl;
+    std::cout << "popped with C++20 span: " << popped_span_count << '\n';
     for (std::size_t i = 0; i < popped_span_count; ++i)
     {
-        std::cout << "  " << popped_span[i] << std::endl;
+        std::cout << "  " << popped_span[i] << '\n';
     }
 
-    std::cout << "drain C++20 container range:" << std::endl;
+    std::cout << "drain C++20 container range:" << '\n';
     drain_ring_buffer(str_queue);
 
     // push_range (C++20): range overload with a filtered view
     std::vector<std::string> mixed = { "keep_1", "skip", "keep_2", "no" };
     auto filtered = mixed | std::views::filter([](const std::string& s) { return s.starts_with("keep"); });
     const auto inserted_view = str_queue.push_range(filtered);
-    std::cout << "inserted with C++20 filtered view: " << inserted_view << std::endl;
+    std::cout << "inserted with C++20 filtered view: " << inserted_view << '\n';
 
-    std::cout << "drain C++20 filtered view:" << std::endl;
+    std::cout << "drain C++20 filtered view:" << '\n';
     drain_ring_buffer(str_queue);
 #endif
 }
@@ -227,21 +227,21 @@ void test_ring_buffer()
 
 void test_lock_free_ring_buffer()
 {
-    std::cout << "-- lock free ring buffer --" << std::endl;
+    std::cout << "-- lock free ring buffer --" << '\n';
     tools::lock_free_ring_buffer<int, 4U> queue;
 
     // push_range (C++17): iterator-pair insertion
     std::vector<int> input = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
     const auto inserted = queue.push_range(input.begin(), input.end());
-    std::cout << "push_range inserted: " << inserted << std::endl;
+    std::cout << "push_range inserted: " << inserted << '\n';
 
     // pop_range (C++17): iterator-pair extraction
     std::array<int, 6> popped_first {};
     const auto popped_count_first = queue.pop_range(popped_first.begin(), popped_first.end());
-    std::cout << "pop_range iterator-pair popped: " << popped_count_first << std::endl;
+    std::cout << "pop_range iterator-pair popped: " << popped_count_first << '\n';
     for (std::size_t i = 0; i < popped_count_first; ++i)
     {
-        std::cout << "  " << popped_first[i] << std::endl;
+        std::cout << "  " << popped_first[i] << '\n';
     }
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -249,15 +249,15 @@ void test_lock_free_ring_buffer()
     std::vector<int> more = { 11, 12, 13, 14, 15, 16, 17, 18 };
     auto evens = more | std::views::filter([](int value) { return (value % 2) == 0; });
     const auto inserted_view = queue.push_range(evens);
-    std::cout << "push_range C++20 filtered range inserted: " << inserted_view << std::endl;
+    std::cout << "push_range C++20 filtered range inserted: " << inserted_view << '\n';
 
     // pop_range (C++20): span overload
     std::array<int, 8> popped_second {};
     const auto popped_count_second = queue.pop_range(std::span<int>(popped_second));
-    std::cout << "pop_range C++20 span popped: " << popped_count_second << std::endl;
+    std::cout << "pop_range C++20 span popped: " << popped_count_second << '\n';
     for (std::size_t i = 0; i < popped_count_second; ++i)
     {
-        std::cout << "  " << popped_second[i] << std::endl;
+        std::cout << "  " << popped_second[i] << '\n';
     }
 #endif
 
@@ -300,14 +300,14 @@ void test_lock_free_ring_buffer()
     consumer.join();
 
     std::cout << "SPSC wraparound stress ordering OK: " << std::boolalpha << ordering_ok.load() << std::noboolalpha
-              << std::endl;
+              << '\n';
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
 void test_sync_ring_buffer()
 {
-    std::cout << "-- sync ring buffer --" << std::endl;
+    std::cout << "-- sync ring buffer --" << '\n';
     tools::sync_ring_buffer<std::string, 64U> str_queue;
 
     // emplace + push(rvalue)
@@ -315,24 +315,24 @@ void test_sync_ring_buffer()
     std::string moved = "titi";
     str_queue.push(std::move(moved));
 
-    std::cout << "drain initial sync content:" << std::endl;
+    std::cout << "drain initial sync content:" << '\n';
     drain_sync_ring_buffer(str_queue);
 
     // push_range (C++17): iterator-pair insertion under one lock
     std::vector<std::string> batch = { "alpha", "beta", "gamma" };
     const auto inserted_pair = str_queue.push_range(batch.begin(), batch.end());
-    std::cout << "inserted with iterator-pair: " << inserted_pair << std::endl;
+    std::cout << "inserted with iterator-pair: " << inserted_pair << '\n';
 
     // pop_range (C++17): iterator-pair extraction under one lock
     std::array<std::string, 2> popped_pair {};
     const auto popped_pair_count = str_queue.pop_range(popped_pair.begin(), popped_pair.end());
-    std::cout << "popped with iterator-pair: " << popped_pair_count << std::endl;
+    std::cout << "popped with iterator-pair: " << popped_pair_count << '\n';
     for (std::size_t i = 0; i < popped_pair_count; ++i)
     {
-        std::cout << "  " << popped_pair[i] << std::endl;
+        std::cout << "  " << popped_pair[i] << '\n';
     }
 
-    std::cout << "drain iterator-pair sync batch:" << std::endl;
+    std::cout << "drain iterator-pair sync batch:" << '\n';
     drain_sync_ring_buffer(str_queue);
 
     // capacity-bound behavior: insertion stops when full
@@ -340,10 +340,10 @@ void test_sync_ring_buffer()
     std::vector<std::string> overflow_batch = { "A", "B", "C", "D", "E" };
     const auto inserted_limited = small_queue.push_range(overflow_batch.begin(), overflow_batch.end());
     std::cout << "inserted in capacity-limited sync buffer: " << inserted_limited << " / " << overflow_batch.size()
-              << std::endl;
-    std::cout << "small sync queue full: " << std::boolalpha << small_queue.full() << std::noboolalpha << std::endl;
+              << '\n';
+    std::cout << "small sync queue full: " << std::boolalpha << small_queue.full() << std::noboolalpha << '\n';
 
-    std::cout << "drain capacity-limited sync buffer:" << std::endl;
+    std::cout << "drain capacity-limited sync buffer:" << '\n';
     drain_sync_ring_buffer(small_queue);
 
     // reject-on-full mode (single push)
@@ -353,8 +353,8 @@ void test_sync_ring_buffer()
     reject_queue.push("R3");
     const bool reject_single_ok = reject_queue.push("R4");
     std::cout << "sync reject mode single push accepted extra item: " << std::boolalpha << reject_single_ok
-              << std::noboolalpha << std::endl;
-    std::cout << "sync reject mode contents:" << std::endl;
+              << std::noboolalpha << '\n';
+    std::cout << "sync reject mode contents:" << '\n';
     drain_sync_ring_buffer(reject_queue);
 
     // overwrite-on-full mode (single push)
@@ -364,8 +364,8 @@ void test_sync_ring_buffer()
     overwrite_queue.push("O3");
     const bool overwrite_single_happened = overwrite_queue.push_overwrite("O4");
     std::cout << "sync overwrite mode single push evicted oldest: " << std::boolalpha << overwrite_single_happened
-              << std::noboolalpha << std::endl;
-    std::cout << "sync overwrite mode contents (recent history):" << std::endl;
+              << std::noboolalpha << '\n';
+    std::cout << "sync overwrite mode contents (recent history):" << '\n';
     drain_sync_ring_buffer(overwrite_queue);
 
     // overwrite-on-full mode (push_range)
@@ -374,35 +374,35 @@ void test_sync_ring_buffer()
     const auto overwrite_result
         = overwrite_range_queue.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
     std::cout << "sync overwrite range inserted=" << overwrite_result.inserted
-              << " overwritten=" << overwrite_result.overwritten << std::endl;
-    std::cout << "sync overwrite range contents (recent history):" << std::endl;
+              << " overwritten=" << overwrite_result.overwritten << '\n';
+    std::cout << "sync overwrite range contents (recent history):" << '\n';
     drain_sync_ring_buffer(overwrite_range_queue);
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
     // push_range (C++20): range overload with a container
     std::vector<std::string> range_batch = { "one", "two", "three" };
     const auto inserted_range = str_queue.push_range(range_batch);
-    std::cout << "inserted with C++20 range: " << inserted_range << std::endl;
+    std::cout << "inserted with C++20 range: " << inserted_range << '\n';
 
     // pop_range (C++20): span-based extraction under one lock
     std::array<std::string, 4> popped_span {};
     const auto popped_span_count = str_queue.pop_range(std::span<std::string>(popped_span));
-    std::cout << "popped with C++20 span: " << popped_span_count << std::endl;
+    std::cout << "popped with C++20 span: " << popped_span_count << '\n';
     for (std::size_t i = 0; i < popped_span_count; ++i)
     {
-        std::cout << "  " << popped_span[i] << std::endl;
+        std::cout << "  " << popped_span[i] << '\n';
     }
 
-    std::cout << "drain C++20 container sync range:" << std::endl;
+    std::cout << "drain C++20 container sync range:" << '\n';
     drain_sync_ring_buffer(str_queue);
 
     // push_range (C++20): range overload with a filtered view
     std::vector<std::string> mixed = { "keep_1", "skip", "keep_2", "no" };
     auto filtered = mixed | std::views::filter([](const std::string& s) { return s.starts_with("keep"); });
     const auto inserted_view = str_queue.push_range(filtered);
-    std::cout << "inserted with C++20 filtered view: " << inserted_view << std::endl;
+    std::cout << "inserted with C++20 filtered view: " << inserted_view << '\n';
 
-    std::cout << "drain C++20 filtered sync view:" << std::endl;
+    std::cout << "drain C++20 filtered sync view:" << '\n';
     drain_sync_ring_buffer(str_queue);
 #endif
 }
@@ -411,7 +411,7 @@ void test_sync_ring_buffer()
 
 void test_ring_vector()
 {
-    std::cout << "-- ring vector --" << std::endl;
+    std::cout << "-- ring vector --" << '\n';
     tools::ring_vector<std::string> str_vec(10U);
 
     // emplace: construct string directly in the vector
@@ -422,30 +422,30 @@ void test_ring_vector()
     str_vec.push(std::move(moved));
 
     auto item = str_vec.front();
-    std::cout << "front after emplace/push: " << item << std::endl;
+    std::cout << "front after emplace/push: " << item << '\n';
 
-    std::cout << "drain initial content:" << std::endl;
+    std::cout << "drain initial content:" << '\n';
     drain_ring_vector(str_vec);
 
     // C++17: push_range via iterator-pair insertion
     {
         std::vector<std::string> batch = { "apple", "banana", "cherry" };
         const auto inserted = str_vec.push_range(batch.begin(), batch.end());
-        std::cout << "inserted with iterator-pair: " << inserted << std::endl;
+        std::cout << "inserted with iterator-pair: " << inserted << '\n';
     }
 
     // C++17: pop_range via iterator-pair extraction
     {
         std::array<std::string, 2> output {};
         const auto popped = str_vec.pop_range(output.begin(), output.end());
-        std::cout << "popped with iterator-pair: " << popped << std::endl;
+        std::cout << "popped with iterator-pair: " << popped << '\n';
         for (std::size_t i = 0; i < popped; ++i)
         {
-            std::cout << "  " << output[i] << std::endl;
+            std::cout << "  " << output[i] << '\n';
         }
     }
 
-    std::cout << "drain iterator-pair batch:" << std::endl;
+    std::cout << "drain iterator-pair batch:" << '\n';
     drain_ring_vector(str_vec);
 
     // reject-on-full mode (single push)
@@ -456,8 +456,8 @@ void test_ring_vector()
     reject_vec.push("R4");
     const bool reject_single_ok = reject_vec.push("R5");
     std::cout << "reject mode single push accepted extra item: " << std::boolalpha << reject_single_ok
-              << std::noboolalpha << std::endl;
-    std::cout << "reject mode contents:" << std::endl;
+              << std::noboolalpha << '\n';
+    std::cout << "reject mode contents:" << '\n';
     drain_ring_vector(reject_vec);
 
     // overwrite-on-full mode (single push)
@@ -468,8 +468,8 @@ void test_ring_vector()
     overwrite_vec.push("O4");
     const bool overwrite_single_happened = overwrite_vec.push_overwrite("O5");
     std::cout << "overwrite mode single push evicted oldest: " << std::boolalpha << overwrite_single_happened
-              << std::noboolalpha << std::endl;
-    std::cout << "overwrite mode contents (recent history):" << std::endl;
+              << std::noboolalpha << '\n';
+    std::cout << "overwrite mode contents (recent history):" << '\n';
     drain_ring_vector(overwrite_vec);
 
     // overwrite-on-full mode (push_range)
@@ -478,8 +478,8 @@ void test_ring_vector()
     const auto overwrite_result
         = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
     std::cout << "overwrite range inserted=" << overwrite_result.inserted
-              << " overwritten=" << overwrite_result.overwritten << std::endl;
-    std::cout << "overwrite range contents (recent history):" << std::endl;
+              << " overwritten=" << overwrite_result.overwritten << '\n';
+    std::cout << "overwrite range contents (recent history):" << '\n';
     drain_ring_vector(overwrite_range_vec);
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -488,52 +488,52 @@ void test_ring_vector()
         std::vector<std::string> batch = { "dog", "elephant", "fox", "giraffe" };
         auto filtered = batch | std::views::filter([](const auto& s) { return s.length() > 3; });
         const auto inserted = str_vec.push_range(filtered);
-        std::cout << "inserted with C++20 filtered range: " << inserted << std::endl;
+        std::cout << "inserted with C++20 filtered range: " << inserted << '\n';
     }
 
     // C++20: pop_range via span
     {
         std::array<std::string, 3> buffer {};
         const auto popped = str_vec.pop_range(std::span(buffer));
-        std::cout << "popped with C++20 span: " << popped << std::endl;
+        std::cout << "popped with C++20 span: " << popped << '\n';
         for (std::size_t i = 0; i < popped; ++i)
         {
-            std::cout << "  " << buffer[i] << std::endl;
+            std::cout << "  " << buffer[i] << '\n';
         }
     }
 
-    std::cout << "drain C++20 span batch:" << std::endl;
+    std::cout << "drain C++20 span batch:" << '\n';
     drain_ring_vector(str_vec);
 #endif
 
     // Resize test: expand capacity and add more items
     {
-        std::cout << "resize test:" << std::endl;
+        std::cout << "resize test:" << '\n';
         str_vec.emplace("item1");
         str_vec.emplace("item2");
         str_vec.emplace("item3");
-        std::cout << "before resize: size=" << str_vec.size() << ", capacity=" << str_vec.capacity() << std::endl;
+        std::cout << "before resize: size=" << str_vec.size() << ", capacity=" << str_vec.capacity() << '\n';
         str_vec.resize(20U);
-        std::cout << "after expand resize: size=" << str_vec.size() << ", capacity=" << str_vec.capacity() << std::endl;
+        std::cout << "after expand resize: size=" << str_vec.size() << ", capacity=" << str_vec.capacity() << '\n';
 
         // Add more items after resize
         std::vector<std::string> more = { "new1", "new2", "new3", "new4" };
         str_vec.push_range(more.begin(), more.end());
-        std::cout << "after push_range: size=" << str_vec.size() << std::endl;
+        std::cout << "after push_range: size=" << str_vec.size() << '\n';
 
         // Shrink and check if oldest items are dropped
-        std::cout << "contents before shrink:" << std::endl;
+        std::cout << "contents before shrink:" << '\n';
         for (std::size_t i = 0; i < str_vec.size(); ++i)
         {
-            std::cout << "  [" << i << "] " << str_vec[i] << std::endl;
+            std::cout << "  [" << i << "] " << str_vec[i] << '\n';
         }
 
         str_vec.resize(4U);
-        std::cout << "after shrink resize: size=" << str_vec.size() << ", capacity=" << str_vec.capacity() << std::endl;
-        std::cout << "contents after shrink:" << std::endl;
+        std::cout << "after shrink resize: size=" << str_vec.size() << ", capacity=" << str_vec.capacity() << '\n';
+        std::cout << "contents after shrink:" << '\n';
         for (std::size_t i = 0; i < str_vec.size(); ++i)
         {
-            std::cout << "  [" << i << "] " << str_vec[i] << std::endl;
+            std::cout << "  [" << i << "] " << str_vec[i] << '\n';
         }
     }
 }
@@ -542,7 +542,7 @@ void test_ring_vector()
 
 void test_sync_ring_vector()
 {
-    std::cout << "-- sync ring vector --" << std::endl;
+    std::cout << "-- sync ring vector --" << '\n';
     tools::sync_ring_vector<std::string> str_vec(10U);
 
     // emplace: construct string directly in the vector
@@ -551,32 +551,32 @@ void test_sync_ring_vector()
     auto item = str_vec.front();
     if (item.has_value())
     {
-        std::cout << "front after emplace: " << *item << std::endl;
+        std::cout << "front after emplace: " << *item << '\n';
     }
 
     // drain initial content
-    std::cout << "drain initial content:" << std::endl;
+    std::cout << "drain initial content:" << '\n';
     drain_sync_ring_vector(str_vec);
 
     // C++17: push_range via iterator-pair
     {
         std::vector<std::string> batch = { "one", "two", "three" };
         const auto inserted = str_vec.push_range(batch.begin(), batch.end());
-        std::cout << "inserted with iterator-pair: " << inserted << std::endl;
+        std::cout << "inserted with iterator-pair: " << inserted << '\n';
     }
 
     // C++17: pop_range via iterator-pair
     {
         std::array<std::string, 2> output {};
         const auto popped = str_vec.pop_range(output.begin(), output.end());
-        std::cout << "popped with iterator-pair: " << popped << std::endl;
+        std::cout << "popped with iterator-pair: " << popped << '\n';
         for (std::size_t i = 0; i < popped; ++i)
         {
-            std::cout << "  " << output[i] << std::endl;
+            std::cout << "  " << output[i] << '\n';
         }
     }
 
-    std::cout << "drain iterator-pair batch:" << std::endl;
+    std::cout << "drain iterator-pair batch:" << '\n';
     drain_sync_ring_vector(str_vec);
 
     // reject-on-full mode (single push)
@@ -587,8 +587,8 @@ void test_sync_ring_vector()
     reject_vec.push("R4");
     const bool reject_single_ok = reject_vec.push("R5");
     std::cout << "sync reject mode single push accepted extra item: " << std::boolalpha << reject_single_ok
-              << std::noboolalpha << std::endl;
-    std::cout << "sync reject mode contents:" << std::endl;
+              << std::noboolalpha << '\n';
+    std::cout << "sync reject mode contents:" << '\n';
     drain_sync_ring_vector(reject_vec);
 
     // overwrite-on-full mode (single push)
@@ -599,8 +599,8 @@ void test_sync_ring_vector()
     overwrite_vec.push("O4");
     const bool overwrite_single_happened = overwrite_vec.push_overwrite("O5");
     std::cout << "sync overwrite mode single push evicted oldest: " << std::boolalpha << overwrite_single_happened
-              << std::noboolalpha << std::endl;
-    std::cout << "sync overwrite mode contents (recent history):" << std::endl;
+              << std::noboolalpha << '\n';
+    std::cout << "sync overwrite mode contents (recent history):" << '\n';
     drain_sync_ring_vector(overwrite_vec);
 
     // overwrite-on-full mode (push_range)
@@ -609,8 +609,8 @@ void test_sync_ring_vector()
     const auto overwrite_result
         = overwrite_range_vec.push_range_overwrite(overwrite_input.begin(), overwrite_input.end());
     std::cout << "sync overwrite range inserted=" << overwrite_result.inserted
-              << " overwritten=" << overwrite_result.overwritten << std::endl;
-    std::cout << "sync overwrite range contents (recent history):" << std::endl;
+              << " overwritten=" << overwrite_result.overwritten << '\n';
+    std::cout << "sync overwrite range contents (recent history):" << '\n';
     drain_sync_ring_vector(overwrite_range_vec);
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -619,21 +619,21 @@ void test_sync_ring_vector()
         std::vector<std::string> batch = { "red", "green", "blue", "yellow" };
         auto filtered = batch | std::views::filter([](const auto& s) { return s.length() > 4; });
         const auto inserted = str_vec.push_range(filtered);
-        std::cout << "inserted with C++20 filtered range: " << inserted << std::endl;
+        std::cout << "inserted with C++20 filtered range: " << inserted << '\n';
     }
 
     // C++20: pop_range via span
     {
         std::array<std::string, 3> buffer {};
         const auto popped = str_vec.pop_range(std::span(buffer));
-        std::cout << "popped with C++20 span: " << popped << std::endl;
+        std::cout << "popped with C++20 span: " << popped << '\n';
         for (std::size_t i = 0; i < popped; ++i)
         {
-            std::cout << "  " << buffer[i] << std::endl;
+            std::cout << "  " << buffer[i] << '\n';
         }
     }
 
-    std::cout << "drain C++20 span batch:" << std::endl;
+    std::cout << "drain C++20 span batch:" << '\n';
     drain_sync_ring_vector(str_vec);
 #endif
 }
@@ -642,7 +642,7 @@ void test_sync_ring_vector()
 
 void test_sync_queue()
 {
-    std::cout << "-- sync queue --" << std::endl;
+    std::cout << "-- sync queue --" << '\n';
     tools::sync_queue<std::string> str_queue;
 
     // emplace: construct string in-place from a string literal
@@ -651,7 +651,7 @@ void test_sync_queue()
     auto item = str_queue.front_pop();
     if (item.has_value())
     {
-        std::cout << *item << std::endl;
+        std::cout << *item << '\n';
     }
 
     // push rvalue: move a pre-constructed string into the queue
@@ -660,29 +660,29 @@ void test_sync_queue()
     str_queue.push(std::move(s1));
     str_queue.push(std::move(s2));
 
-    std::cout << "size after two rvalue pushes: " << str_queue.size() << std::endl;
+    std::cout << "size after two rvalue pushes: " << str_queue.size() << '\n';
 
     while (!str_queue.empty())
     {
         auto val = str_queue.front_pop();
         if (val.has_value())
         {
-            std::cout << "  popped: " << *val << std::endl;
+            std::cout << "  popped: " << *val << '\n';
         }
     }
 
     // push_range (C++17): iterator-pair batch insert under a single lock
     std::vector<std::string> batch = { "alpha", "beta", "gamma", "delta" };
     str_queue.push_range(batch.begin(), batch.end());
-    std::cout << "size after push_range (iterator-pair): " << str_queue.size() << std::endl;
+    std::cout << "size after push_range (iterator-pair): " << str_queue.size() << '\n';
 
     // pop_range (C++17): iterator-pair batch extraction under a single lock
     std::array<std::string, 3> popped_batch {};
     const auto popped_count = str_queue.pop_range(popped_batch.begin(), popped_batch.end());
-    std::cout << "popped with pop_range (iterator-pair): " << popped_count << std::endl;
+    std::cout << "popped with pop_range (iterator-pair): " << popped_count << '\n';
     for (std::size_t i = 0; i < popped_count; ++i)
     {
-        std::cout << "  popped: " << popped_batch[i] << std::endl;
+        std::cout << "  popped: " << popped_batch[i] << '\n';
     }
 
     while (!str_queue.empty())
@@ -690,7 +690,7 @@ void test_sync_queue()
         auto val = str_queue.front_pop();
         if (val.has_value())
         {
-            std::cout << "  popped: " << *val << std::endl;
+            std::cout << "  popped: " << *val << '\n';
         }
     }
 
@@ -698,15 +698,15 @@ void test_sync_queue()
     // push_range (C++20): range overload — accepts any std::ranges::input_range
     std::vector<std::string> range_batch = { "one", "two", "three" };
     str_queue.push_range(range_batch); // lvalue range
-    std::cout << "size after push_range (C++20 range, lvalue): " << str_queue.size() << std::endl;
+    std::cout << "size after push_range (C++20 range, lvalue): " << str_queue.size() << '\n';
 
     // pop_range (C++20): span-based batch extraction
     std::array<std::string, 4> popped_span {};
     const auto popped_span_count = str_queue.pop_range(std::span<std::string>(popped_span));
-    std::cout << "popped with pop_range (C++20 span): " << popped_span_count << std::endl;
+    std::cout << "popped with pop_range (C++20 span): " << popped_span_count << '\n';
     for (std::size_t i = 0; i < popped_span_count; ++i)
     {
-        std::cout << "  popped: " << popped_span[i] << std::endl;
+        std::cout << "  popped: " << popped_span[i] << '\n';
     }
 
     while (!str_queue.empty())
@@ -714,7 +714,7 @@ void test_sync_queue()
         auto val = str_queue.front_pop();
         if (val.has_value())
         {
-            std::cout << "  popped: " << *val << std::endl;
+            std::cout << "  popped: " << *val << '\n';
         }
     }
 
@@ -722,14 +722,14 @@ void test_sync_queue()
     std::vector<std::string> mixed = { "keep_me", "skip", "keep_too", "nope" };
     auto filtered = mixed | std::views::filter([](const std::string& s) { return s.starts_with("keep"); });
     str_queue.push_range(filtered);
-    std::cout << "size after push_range (C++20 filtered view): " << str_queue.size() << std::endl;
+    std::cout << "size after push_range (C++20 filtered view): " << str_queue.size() << '\n';
 
     while (!str_queue.empty())
     {
         auto val = str_queue.front_pop();
         if (val.has_value())
         {
-            std::cout << "  popped: " << *val << std::endl;
+            std::cout << "  popped: " << *val << '\n';
         }
     }
 #endif
@@ -739,20 +739,20 @@ void test_sync_queue()
 
 void test_sync_priority_queue()
 {
-    std::cout << "-- sync priority queue --" << std::endl;
+    std::cout << "-- sync priority queue --" << '\n';
 
     tools::sync_priority_queue<int> min_heap;
     min_heap.push(5);
     min_heap.push(1);
     min_heap.push(3);
 
-    std::cout << "min-heap pop order:" << std::endl;
+    std::cout << "min-heap pop order:" << '\n';
     while (!min_heap.empty())
     {
         auto item = min_heap.top_pop();
         if (item.has_value())
         {
-            std::cout << "  " << *item << std::endl;
+            std::cout << "  " << *item << '\n';
         }
     }
 
@@ -775,15 +775,15 @@ void test_sync_priority_queue()
     // async_observer can swap sync_queue for sync_priority_queue transparently.
     tools::async_observer<pq_topic, priority_event, tools::sync_priority_queue> observer;
 
-    observer.inform(pq_topic::generic, priority_event { 3, "low" }, "worker");
-    observer.inform(pq_topic::generic, priority_event { 1, "high" }, "worker");
-    observer.inform(pq_topic::generic, priority_event { 2, "medium" }, "worker");
+    observer.inform(pq_topic::generic, priority_event { .priority=3, .message="low" }, "worker");
+    observer.inform(pq_topic::generic, priority_event { .priority=1, .message="high" }, "worker");
+    observer.inform(pq_topic::generic, priority_event { .priority=2, .message="medium" }, "worker");
 
     auto events = observer.pop_all_events();
-    std::cout << "async_observer priority order:" << std::endl;
+    std::cout << "async_observer priority order:" << '\n';
     for (const auto& evt : events)
     {
-        std::cout << "  p=" << std::get<1>(evt).priority << " msg=" << std::get<1>(evt).message << std::endl;
+        std::cout << "  p=" << std::get<1>(evt).priority << " msg=" << std::get<1>(evt).message << '\n';
     }
 }
 
@@ -791,7 +791,7 @@ void test_sync_priority_queue()
 
 void test_async_observer_queue_overflow()
 {
-    std::cout << "-- async observer queue overflow --" << std::endl;
+    std::cout << "-- async observer queue overflow --" << '\n';
 
     tools::async_observer<std::string, std::string, tools::sync_ring_vector> observer(2U);
     observer.inform("topic", "event-1", "producer");
@@ -799,21 +799,21 @@ void test_async_observer_queue_overflow()
     observer.inform("topic", "event-3-dropped", "producer");
 
     std::cout << "overflow detected = " << std::boolalpha << observer.has_queue_overflow()
-              << ", dropped = " << observer.queue_overflow_count() << std::noboolalpha << std::endl;
+              << ", dropped = " << observer.queue_overflow_count() << std::noboolalpha << '\n';
 
     const auto dropped_count = observer.consume_queue_overflow_count();
     std::cout << "consumed dropped count = " << dropped_count << ", overflow pending = " << std::boolalpha
-              << observer.has_queue_overflow() << std::noboolalpha << std::endl;
+              << observer.has_queue_overflow() << std::noboolalpha << '\n';
 
     const auto events = observer.pop_all_events();
-    std::cout << "queued events = " << events.size() << std::endl;
+    std::cout << "queued events = " << events.size() << '\n';
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
 void test_sync_dictionary()
 {
-    std::cout << "-- sync dictionary --" << std::endl;
+    std::cout << "-- sync dictionary --" << '\n';
     tools::sync_dictionary<std::string, std::string> str_dict;
 
     // single add/find/remove path
@@ -823,7 +823,7 @@ void test_sync_dictionary()
 
     if (result.has_value())
     {
-        std::cout << *result << std::endl;
+        std::cout << *result << '\n';
         str_dict.remove("toto");
     }
 
@@ -834,13 +834,13 @@ void test_sync_dictionary()
         { "k3", "v3" },
     };
     const auto inserted_pair = str_dict.add_range(batch.begin(), batch.end());
-    std::cout << "add_range iterator-pair inserted: " << inserted_pair << std::endl;
+    std::cout << "add_range iterator-pair inserted: " << inserted_pair << '\n';
 
     auto snapshot = str_dict.get_collection();
-    std::cout << "dictionary snapshot after iterator-pair:" << std::endl;
+    std::cout << "dictionary snapshot after iterator-pair:" << '\n';
     for (const auto& [key, value] : snapshot)
     {
-        std::cout << "  " << key << " => " << value << std::endl;
+        std::cout << "  " << key << " => " << value << '\n';
     }
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -852,24 +852,24 @@ void test_sync_dictionary()
         { "drop_A", "vb" },
     };
     const auto inserted_range = str_dict.add_range(extra);
-    std::cout << "add_range C++20 range inserted: " << inserted_range << std::endl;
+    std::cout << "add_range C++20 range inserted: " << inserted_range << '\n';
 
     // add_range (C++20): range overload with a filtered view
     auto filtered = extra | std::views::filter([](const auto& kv) { return kv.first.starts_with("keep"); });
     const auto inserted_view = str_dict.add_range(filtered);
-    std::cout << "add_range C++20 filtered view inserted: " << inserted_view << std::endl;
+    std::cout << "add_range C++20 filtered view inserted: " << inserted_view << '\n';
 #endif
 
     snapshot = str_dict.get_collection();
-    std::cout << "dictionary final snapshot (size=" << snapshot.size() << "):" << std::endl;
+    std::cout << "dictionary final snapshot (size=" << snapshot.size() << "):" << '\n';
     for (const auto& [key, value] : snapshot)
     {
-        std::cout << "  " << key << " => " << value << std::endl;
+        std::cout << "  " << key << " => " << value << '\n';
     }
 
     str_dict.clear();
     std::cout << "dictionary empty after clear: " << std::boolalpha << str_dict.empty() << std::noboolalpha
-              << std::endl;
+              << '\n';
 
     // same API, alternate backing container.
     tools::sync_dictionary<std::string, std::string, std::unordered_map<std::string, std::string>> hash_dict;
@@ -877,14 +877,14 @@ void test_sync_dictionary()
     hash_dict.add("u2", "two");
     auto hash_snapshot = hash_dict.snapshot();
     std::cout << "unordered_map-backed dictionary size=" << hash_snapshot.size() << " contains(u2)=" << std::boolalpha
-              << hash_dict.contains("u2") << std::noboolalpha << std::endl;
+              << hash_dict.contains("u2") << std::noboolalpha << '\n';
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
 void test_expected()
 {
-    std::cout << "-- expected --" << std::endl;
+    std::cout << "-- expected --" << '\n';
 
     auto parse_positive = [](int value) -> tools::expected<int, std::string>
     {
@@ -898,13 +898,13 @@ void test_expected()
     auto ok = parse_positive(21);
     if (ok.has_value())
     {
-        std::cout << "ok value=" << ok.value() << std::endl;
+        std::cout << "ok value=" << ok.value() << '\n';
     }
 
     auto ko = parse_positive(-1);
     if (!ko.has_value())
     {
-        std::cout << "error=" << ko.error() << std::endl;
+        std::cout << "error=" << ko.error() << '\n';
     }
 
     auto validate_name = [](const std::string& name) -> tools::expected<void, std::string>
@@ -919,7 +919,7 @@ void test_expected()
     auto status = validate_name("");
     if (!status)
     {
-        std::cout << "void-error=" << status.error() << std::endl;
+        std::cout << "void-error=" << status.error() << '\n';
     }
 }
 
@@ -927,7 +927,7 @@ void test_expected()
 
 void test_expected_unit_style()
 {
-    std::cout << "-- expected unit-style checks --" << std::endl;
+    std::cout << "-- expected unit-style checks --" << '\n';
 
     std::size_t passed = 0U;
     std::size_t failed = 0U;
@@ -937,12 +937,12 @@ void test_expected_unit_style()
         if (condition)
         {
             ++passed;
-            std::cout << "  [PASS] " << name << std::endl;
+            std::cout << "  [PASS] " << name << '\n';
         }
         else
         {
             ++failed;
-            std::cout << "  [FAIL] " << name << std::endl;
+            std::cout << "  [FAIL] " << name << '\n';
         }
     };
 
@@ -1003,17 +1003,17 @@ void test_expected_unit_style()
 #if defined(TOOLS_HAS_STD_EXPECTED)
     std::cout << "  backend: std::expected" << std::endl;
 #else
-    std::cout << "  backend: tools fallback expected" << std::endl;
+    std::cout << "  backend: tools fallback expected" << '\n';
 #endif
 
-    std::cout << "  summary: passed=" << passed << " failed=" << failed << std::endl;
+    std::cout << "  summary: passed=" << passed << " failed=" << failed << '\n';
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
 void test_time_list()
 {
-    std::cout << "-- time_list --" << std::endl;
+    std::cout << "-- time_list --" << '\n';
 
     // Integral timestamp + string payload.
     tools::time_list<long, std::string> int_list;
@@ -1024,23 +1024,23 @@ void test_time_list()
     auto earliest = int_list.top();
     if (earliest.has_value())
     {
-        std::cout << "integral earliest: " << earliest->first << " => " << earliest->second << std::endl;
+        std::cout << "integral earliest: " << earliest->first << " => " << earliest->second << '\n';
     }
 
     auto sorted_snapshot = int_list.snapshot_sorted();
-    std::cout << "integral snapshot order:" << std::endl;
+    std::cout << "integral snapshot order:" << '\n';
     for (const auto& entry : sorted_snapshot)
     {
-        std::cout << "  " << entry.first << " => " << entry.second << std::endl;
+        std::cout << "  " << entry.first << " => " << entry.second << '\n';
     }
 
-    std::cout << "integral drain order:" << std::endl;
+    std::cout << "integral drain order:" << '\n';
     while (!int_list.empty())
     {
         auto entry = int_list.top_pop();
         if (entry.has_value())
         {
-            std::cout << "  " << entry->first << " => " << entry->second << std::endl;
+            std::cout << "  " << entry->first << " => " << entry->second << '\n';
         }
     }
 
@@ -1053,13 +1053,13 @@ void test_time_list()
     chrono_list.push(base_time + std::chrono::milliseconds(100), 1);
     chrono_list.push(base_time + std::chrono::milliseconds(200), 2);
 
-    std::cout << "chrono drain order (values should be 1,2,3):" << std::endl;
+    std::cout << "chrono drain order (values should be 1,2,3):" << '\n';
     while (!chrono_list.empty())
     {
         auto entry = chrono_list.top_pop();
         if (entry.has_value())
         {
-            std::cout << "  " << entry->second << std::endl;
+            std::cout << "  " << entry->second << '\n';
         }
     }
 }
@@ -1068,7 +1068,7 @@ void test_time_list()
 
 void test_time_list_unit_style()
 {
-    std::cout << "-- time_list unit-style checks --" << std::endl;
+    std::cout << "-- time_list unit-style checks --" << '\n';
 
     std::size_t passed = 0U;
     std::size_t failed = 0U;
@@ -1078,19 +1078,19 @@ void test_time_list_unit_style()
         if (condition)
         {
             ++passed;
-            std::cout << "  [PASS] " << name << std::endl;
+            std::cout << "  [PASS] " << name << '\n';
         }
         else
         {
             ++failed;
-            std::cout << "  [FAIL] " << name << std::endl;
+            std::cout << "  [FAIL] " << name << '\n';
         }
     };
 
     tools::time_list<long, int> list;
 
     check(list.empty(), "starts empty");
-    check(list.size() == 0U, "starts with size 0");
+    check(list.empty(), "starts with size 0");
     check(!list.top().has_value(), "top() empty returns nullopt");
     check(!list.top_pop().has_value(), "top_pop() empty returns nullopt");
 
@@ -1134,7 +1134,7 @@ void test_time_list_unit_style()
     check(list.size() == 2U, "size before clear");
     list.clear();
     check(list.empty(), "clear empties container");
-    check(list.size() == 0U, "size is 0 after clear");
+    check(list.empty(), "size is 0 after clear");
 
     // Chrono timestamp coverage: verify chronological top_pop order.
     using steady_tp = std::chrono::steady_clock::time_point;
@@ -1153,14 +1153,14 @@ void test_time_list_unit_style()
     check(c2.has_value() && c2->second == 2, "chrono top_pop order #2");
     check(c3.has_value() && c3->second == 3, "chrono top_pop order #3");
 
-    std::cout << "  summary: passed=" << passed << " failed=" << failed << std::endl;
+    std::cout << "  summary: passed=" << passed << " failed=" << failed << '\n';
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
 void test_sync_time_list()
 {
-    std::cout << "-- sync_time_list --" << std::endl;
+    std::cout << "-- sync_time_list --" << '\n';
 
     tools::sync_time_list<long, int> sync_list;
     sync_list.push(30L, 30);
@@ -1171,23 +1171,23 @@ void test_sync_time_list()
     auto peeked = sync_list.top();
     if (peeked.has_value())
     {
-        std::cout << "sync earliest: " << peeked->first << " => " << peeked->second << std::endl;
+        std::cout << "sync earliest: " << peeked->first << " => " << peeked->second << '\n';
     }
 
     auto snapshot = sync_list.snapshot_sorted();
-    std::cout << "sync snapshot order:" << std::endl;
+    std::cout << "sync snapshot order:" << '\n';
     for (const auto& entry : snapshot)
     {
-        std::cout << "  " << entry.first << " => " << entry.second << std::endl;
+        std::cout << "  " << entry.first << " => " << entry.second << '\n';
     }
 
-    std::cout << "sync drain order:" << std::endl;
+    std::cout << "sync drain order:" << '\n';
     while (!sync_list.empty())
     {
         auto entry = sync_list.top_pop();
         if (entry.has_value())
         {
-            std::cout << "  " << entry->first << " => " << entry->second << std::endl;
+            std::cout << "  " << entry->first << " => " << entry->second << '\n';
         }
     }
 }
@@ -1196,7 +1196,7 @@ void test_sync_time_list()
 
 void test_sync_time_list_unit_style()
 {
-    std::cout << "-- sync_time_list unit-style checks --" << std::endl;
+    std::cout << "-- sync_time_list unit-style checks --" << '\n';
 
     std::size_t passed = 0U;
     std::size_t failed = 0U;
@@ -1206,19 +1206,19 @@ void test_sync_time_list_unit_style()
         if (condition)
         {
             ++passed;
-            std::cout << "  [PASS] " << name << std::endl;
+            std::cout << "  [PASS] " << name << '\n';
         }
         else
         {
             ++failed;
-            std::cout << "  [FAIL] " << name << std::endl;
+            std::cout << "  [FAIL] " << name << '\n';
         }
     };
 
     tools::sync_time_list<long, int> list;
 
     check(list.empty(), "starts empty");
-    check(list.size() == 0U, "starts with size 0");
+    check(list.empty(), "starts with size 0");
     check(!list.top().has_value(), "top() empty returns nullopt");
     check(!list.top_pop().has_value(), "top_pop() empty returns nullopt");
 
@@ -1266,16 +1266,16 @@ void test_sync_time_list_unit_style()
     check(list.size() == 2U, "size before clear");
     list.clear();
     check(list.empty(), "clear empties container");
-    check(list.size() == 0U, "size is 0 after clear");
+    check(list.empty(), "size is 0 after clear");
 
-    std::cout << "  summary: passed=" << passed << " failed=" << failed << std::endl;
+    std::cout << "  summary: passed=" << passed << " failed=" << failed << '\n';
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
 void test_histogram()
 {
-    std::cout << "-- histogram --" << std::endl;
+    std::cout << "-- histogram --" << '\n';
     tools::histogram<double> hist;
 
     hist.add(1.0);
@@ -1284,25 +1284,25 @@ void test_histogram()
     // add_range (C++17): iterator-pair batch insertion
     std::vector<double> samples = { 1.0, 2.0, 2.0, 3.5, 3.5, 3.5 };
     const auto inserted_pair = hist.add_range(samples.begin(), samples.end());
-    std::cout << "add_range iterator-pair inserted: " << inserted_pair << std::endl;
+    std::cout << "add_range iterator-pair inserted: " << inserted_pair << '\n';
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
     // add_range (C++20): range overload with a container
     std::vector<double> extra = { -2.0, -1.0, 0.0, 0.5, 4.0, 5.0 };
     const auto inserted_range = hist.add_range(extra);
-    std::cout << "add_range C++20 range inserted: " << inserted_range << std::endl;
+    std::cout << "add_range C++20 range inserted: " << inserted_range << '\n';
 
     // add_range (C++20): range overload with a filtered view
     auto non_negative = extra | std::views::filter([](double value) { return value >= 0.0; });
     const auto inserted_view = hist.add_range(non_negative);
-    std::cout << "add_range C++20 filtered view inserted: " << inserted_view << std::endl;
+    std::cout << "add_range C++20 filtered view inserted: " << inserted_view << '\n';
 #endif
 
     const auto avg = hist.average();
     const auto var = hist.variance(avg);
-    std::cout << "hist total count: " << hist.total_count() << std::endl;
-    std::cout << "hist top value: " << hist.top() << " (" << hist.top_occurence() << " times)" << std::endl;
-    std::cout << "hist avg: " << avg << " median: " << hist.median() << " variance: " << var << std::endl;
+    std::cout << "hist total count: " << hist.total_count() << '\n';
+    std::cout << "hist top value: " << hist.top() << " (" << hist.top_occurence() << " times)" << '\n';
+    std::cout << "hist avg: " << avg << " median: " << hist.median() << " variance: " << var << '\n';
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -1319,14 +1319,13 @@ class my_observer : public base_observer
 {
 public:
     my_observer() = default;
-    virtual ~my_observer()
-    {
-    }
+    ~my_observer() override
+    = default;
 
-    virtual void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
+    void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
         std::cout << "sync [topic " << static_cast<std::underlying_type<my_topic>::type>(topic) << "] received: event ("
-                  << event << ") from " << origin << std::endl;
+                  << event << ") from " << origin << '\n';
     }
 
 private:
@@ -1341,16 +1340,16 @@ public:
     {
     }
 
-    virtual ~my_async_observer()
+    ~my_async_observer() override
     {
         m_stop_task.store(true);
         m_task_loop.join();
     }
 
-    virtual void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
+    void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
         std::cout << "async/push [topic " << static_cast<std::underlying_type<my_topic>::type>(topic)
-                  << "] received: event (" << event << ") from " << origin << std::endl;
+                  << "] received: event (" << event << ") from " << origin << '\n';
 
         base_async_observer::inform(topic, event, origin);
     }
@@ -1372,7 +1371,7 @@ private:
                     auto& [topic, event, origin] = *entry;
 
                     std::cout << "async/pop [topic " << static_cast<std::underlying_type<my_topic>::type>(topic)
-                              << "] received: event (" << event << ") from " << origin << std::endl;
+                              << "] received: event (" << event << ") from " << origin << '\n';
                 }
             }
         }
@@ -1392,13 +1391,12 @@ public:
     {
     }
 
-    virtual ~my_subject()
-    {
-    }
+    ~my_subject() override
+    = default;
 
-    virtual void publish(const my_topic& topic, const std::string& event) const override
+    void publish(const my_topic& topic, const std::string& event) const override
     {
-        std::cout << "publish: event (" << event << ") to " << name() << std::endl;
+        std::cout << "publish: event (" << event << ") to " << name() << '\n';
         base_subject::publish(topic, event);
     }
 
@@ -1407,7 +1405,7 @@ private:
 
 void test_publish_subscribe()
 {
-    std::cout << "-- publish subscribe --" << std::endl;
+    std::cout << "-- publish subscribe --" << '\n';
     auto observer1 = std::make_shared<my_observer>();
     auto observer2 = std::make_shared<my_observer>();
     auto async_observer = std::make_shared<my_async_observer>();
@@ -1428,7 +1426,7 @@ void test_publish_subscribe()
         [](const my_topic& topic, const std::string& event, const std::string& origin)
         {
             std::cout << "handler [topic " << static_cast<std::underlying_type<my_topic>::type>(topic)
-                      << "] received: event (" << event << ") from " << origin << std::endl;
+                      << "] received: event (" << event << ") from " << origin << '\n';
         });
 
     subject1->publish(my_topic::generic, "toto");
@@ -1461,8 +1459,8 @@ using my_periodic_task = tools::periodic_task<my_periodic_task_context>;
 
 void test_periodic_task()
 {
-    std::cout << "-- periodic task --" << std::endl;
-    auto lambda = [](std::shared_ptr<my_periodic_task_context> context, const std::string& task_name) -> void
+    std::cout << "-- periodic task --" << '\n';
+    auto lambda = [](const std::shared_ptr<my_periodic_task_context>& context, const std::string& task_name) -> void
     {
         (void)task_name;
         context->loop_counter += 1;
@@ -1478,7 +1476,7 @@ void test_periodic_task()
     // sleep 2 sec
     std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
 
-    std::cout << "nb of periodic loops = " << context->loop_counter.load() << std::endl;
+    std::cout << "nb of periodic loops = " << context->loop_counter.load() << '\n';
 
     auto previous_timepoint = start_timepoint;
     while (!context->time_points.empty())
@@ -1489,7 +1487,7 @@ void test_periodic_task()
         {
             const auto elapsed
                 = std::chrono::duration_cast<std::chrono::microseconds>(*measured_timepoint - previous_timepoint);
-            std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
+            std::cout << "timepoint: " << elapsed.count() << " us" << '\n';
             previous_timepoint = *measured_timepoint;
         }
     }
@@ -1501,33 +1499,32 @@ class my_collector : public base_observer
 {
 public:
     my_collector() = default;
-    virtual ~my_collector()
-    {
-    }
+    ~my_collector() override
+    = default;
 
-    virtual void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
+    void inform(const my_topic& topic, const std::string& event, const std::string& origin) override
     {
         (void)topic;
         (void)origin;
 
-        m_histogram.add(static_cast<double>(std::strtod(event.c_str(), nullptr)));
+        m_histogram.add(std::strtod(event.c_str(), nullptr));
     }
 
     void display_stats()
     {
         const auto top = m_histogram.top();
-        std::cout << std::endl
-                  << "value " << top << " appears " << m_histogram.top_occurence() << " times" << std::endl;
+        std::cout << '\n'
+                  << "value " << top << " appears " << m_histogram.top_occurence() << " times" << '\n';
         const auto avg = m_histogram.average();
-        std::cout << "average value is " << avg << std::endl;
-        std::cout << "median value is " << m_histogram.median() << std::endl;
+        std::cout << "average value is " << avg << '\n';
+        std::cout << "median value is " << m_histogram.median() << '\n';
         const auto variance = m_histogram.variance(avg);
-        std::cout << "variance is " << variance << std::endl;
+        std::cout << "variance is " << variance << '\n';
         const auto std_deviation = m_histogram.standard_deviation(variance);
-        std::cout << "standard deviation is " << std_deviation << std::endl;
+        std::cout << "standard deviation is " << std_deviation << '\n';
         std::cout << "gaussian probability of [" << std::floor(top) << "," << std::ceil(top) << "] occuring is "
                   << m_histogram.gaussian_probability(std::floor(top), std::ceil(top), avg, std_deviation, 100)
-                  << std::endl;
+                  << '\n';
     }
 
 private:
@@ -1538,13 +1535,13 @@ private:
 
 void test_periodic_publish_subscribe()
 {
-    std::cout << "-- periodic publish subscribe --" << std::endl;
+    std::cout << "-- periodic publish subscribe --" << '\n';
     auto monitoring = std::make_shared<my_async_observer>();
     auto data_source = std::make_shared<my_subject>("data_source");
     auto histogram_feeder = std::make_shared<my_collector>();
 
     auto sampler
-        = [&data_source](std::shared_ptr<my_periodic_task_context> context, const std::string& task_name) -> void
+        = [&data_source](const std::shared_ptr<my_periodic_task_context>& context, const std::string& task_name) -> void
     {
         (void)task_name;
 
@@ -1576,12 +1573,12 @@ void test_periodic_publish_subscribe()
 
 void test_queued_commands()
 {
-    std::cout << "-- queued commands --" << std::endl;
+    std::cout << "-- queued commands --" << '\n';
     tools::sync_queue<std::function<void()>> commands_queue;
 
-    commands_queue.emplace([]() { std::cout << "hello" << std::endl; });
+    commands_queue.emplace([]() { std::cout << "hello" << '\n'; });
 
-    commands_queue.emplace([]() { std::cout << "world" << std::endl; });
+    commands_queue.emplace([]() { std::cout << "world" << '\n'; });
 
     while (!commands_queue.empty())
     {
@@ -1597,12 +1594,12 @@ void test_queued_commands()
 
 void test_ring_buffer_commands()
 {
-    std::cout << "-- ring buffer commands --" << std::endl;
+    std::cout << "-- ring buffer commands --" << '\n';
     tools::sync_ring_buffer<std::function<void()>, 128U> commands_queue;
 
-    commands_queue.emplace([]() { std::cout << "hello" << std::endl; });
+    commands_queue.emplace([]() { std::cout << "hello" << '\n'; });
 
-    commands_queue.emplace([]() { std::cout << "world" << std::endl; });
+    commands_queue.emplace([]() { std::cout << "world" << '\n'; });
 
     while (!commands_queue.empty())
     {
@@ -1626,7 +1623,7 @@ using my_worker_task = tools::worker_task<my_worker_task_context>;
 
 void test_worker_tasks()
 {
-    std::cout << "-- worker tasks --" << std::endl;
+    std::cout << "-- worker tasks --" << '\n';
 
     auto context = std::make_shared<my_worker_task_context>();
 
@@ -1646,7 +1643,7 @@ void test_worker_tasks()
         auto idx = distribution(generator);
 
         tasks[idx]->delegate(
-            [](auto context, const auto& task_name) -> void
+            [](const auto& context, const auto& task_name) -> void
             {
                 std::cout << "job " << context->loop_counter.load() << " on worker task " << task_name.c_str()
                           << std::endl;
@@ -1663,7 +1660,7 @@ void test_worker_tasks()
     for (int i = 0; i < 4; ++i)
     {
         batch_jobs.emplace_back(
-            [](auto context, const auto& task_name) -> void
+            [](const auto& context, const auto& task_name) -> void
             {
                 std::cout << "batch job " << context->loop_counter.load() << " on worker task " << task_name.c_str()
                           << std::endl;
@@ -1681,7 +1678,7 @@ void test_worker_tasks()
     // sleep 2 sec
     std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
 
-    std::cout << "nb of periodic loops = " << context->loop_counter.load() << std::endl;
+    std::cout << "nb of periodic loops = " << context->loop_counter.load() << '\n';
 
     auto previous_timepoint = start_timepoint;
     while (!context->time_points.empty())
@@ -1692,7 +1689,7 @@ void test_worker_tasks()
         {
             const auto elapsed
                 = std::chrono::duration_cast<std::chrono::microseconds>(*measured_timepoint - previous_timepoint);
-            std::cout << "timepoint: " << elapsed.count() << " us" << std::endl;
+            std::cout << "timepoint: " << elapsed.count() << " us" << '\n';
             previous_timepoint = *measured_timepoint;
         }
     }
@@ -1700,7 +1697,7 @@ void test_worker_tasks()
 
 void test_worker_tasks_async()
 {
-    std::cout << "-- worker tasks async --" << std::endl;
+    std::cout << "-- worker tasks async --" << '\n';
 
     auto context = std::make_shared<my_worker_task_context>();
     auto task = std::make_unique<my_worker_task>(context, "worker_async");
@@ -1710,20 +1707,20 @@ void test_worker_tasks_async()
                   [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int value)
                   {
                       ctx->loop_counter++;
-                      std::cout << "compute on " << task_name << ", value=" << value << std::endl;
+                      std::cout << "compute on " << task_name << ", value=" << value << '\n';
                       return value * 2;
                   },
                   21)
               .then([](portable_concurrency::future<int> previous) { return previous.get() + 1; });
 
     const auto result = computation.get();
-    std::cout << "async chained result = " << result << std::endl;
-    std::cout << "async jobs executed = " << context->loop_counter.load() << std::endl;
+    std::cout << "async chained result = " << result << '\n';
+    std::cout << "async jobs executed = " << context->loop_counter.load() << '\n';
 }
 
 void test_worker_tasks_async_fanout()
 {
-    std::cout << "-- worker tasks async fanout --" << std::endl;
+    std::cout << "-- worker tasks async fanout --" << '\n';
 
     auto context = std::make_shared<my_worker_task_context>();
     auto task = std::make_unique<my_worker_task>(context, "worker_async_fanout");
@@ -1738,7 +1735,7 @@ void test_worker_tasks_async_fanout()
                     [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int v)
                     {
                         ctx->loop_counter++;
-                        std::cout << "fanout compute on " << task_name << ", value=" << v << std::endl;
+                        std::cout << "fanout compute on " << task_name << ", value=" << v << '\n';
                         return v * v;
                     },
                     value)
@@ -1759,13 +1756,13 @@ void test_worker_tasks_async_fanout()
                                 });
 
     const auto total = total_future.get();
-    std::cout << "fanout/fanin total = " << total << std::endl;
-    std::cout << "fanout async jobs executed = " << context->loop_counter.load() << std::endl;
+    std::cout << "fanout/fanin total = " << total << '\n';
+    std::cout << "fanout async jobs executed = " << context->loop_counter.load() << '\n';
 }
 
 void test_portable_concurrency_test_parity()
 {
-    std::cout << "-- portable_concurrency test parity --" << std::endl;
+    std::cout << "-- portable_concurrency test parity --" << '\n';
 
     std::size_t passed = 0U;
     std::size_t failed = 0U;
@@ -1775,12 +1772,12 @@ void test_portable_concurrency_test_parity()
         if (condition)
         {
             ++passed;
-            std::cout << "  [PASS] " << name << std::endl;
+            std::cout << "  [PASS] " << name << '\n';
         }
         else
         {
             ++failed;
-            std::cout << "  [FAIL] " << name << std::endl;
+            std::cout << "  [FAIL] " << name << '\n';
         }
     };
 
@@ -1926,26 +1923,26 @@ void test_portable_concurrency_test_parity()
         auto promise_and_future = portable_concurrency::make_promise<int>();
         auto shared = promise_and_future.second.share();
 
-        auto continuation = shared.then([](portable_concurrency::shared_future<int> src) { return src.get() + 1; });
+        auto continuation = shared.then([](const portable_concurrency::shared_future<int>& src) { return src.get() + 1; });
 
         check(shared.valid(), "shared_future.then keeps source future valid");
         promise_and_future.first.set_value(10);
         check(continuation.get() == 11, "shared_future.then continuation result");
     }
 
-    std::cout << "  summary: passed=" << passed << " failed=" << failed << std::endl;
+    std::cout << "  summary: passed=" << passed << " failed=" << failed << '\n';
 }
 
 #if defined(PC_HAS_COROUTINES)
 portable_concurrency::future<int> worker_task_coro_job(
     my_worker_task& task, const std::shared_ptr<my_worker_task_context>& context, int value)
 {
-    std::cout << "coroutine started on thread " << std::this_thread::get_id() << std::endl;
+    std::cout << "coroutine started on thread " << std::this_thread::get_id() << '\n';
 
     // Hop to the worker thread before computing the result.
     co_await task.schedule();
 
-    std::cout << "coroutine resumed on worker thread " << std::this_thread::get_id() << std::endl;
+    std::cout << "coroutine resumed on worker thread " << std::this_thread::get_id() << '\n';
     context->loop_counter++;
     co_return value * 3;
 }
@@ -1953,12 +1950,12 @@ portable_concurrency::future<int> worker_task_coro_job(
 portable_concurrency::future<int> worker_task_mixed_coro_job(my_worker_task& task,
     const std::shared_ptr<my_worker_task_context>& context, portable_concurrency::future<int> async_value)
 {
-    std::cout << "mixed coroutine started on thread " << std::this_thread::get_id() << std::endl;
+    std::cout << "mixed coroutine started on thread " << std::this_thread::get_id() << '\n';
 
     // Switch coroutine execution to the worker thread.
     co_await task.schedule();
 
-    std::cout << "mixed coroutine resumed on worker thread " << std::this_thread::get_id() << std::endl;
+    std::cout << "mixed coroutine resumed on worker thread " << std::this_thread::get_id() << '\n';
 
     // Await the delegate_async result from inside the coroutine flow.
     const auto async_result = co_await async_value;
@@ -1968,7 +1965,7 @@ portable_concurrency::future<int> worker_task_mixed_coro_job(my_worker_task& tas
 
 void test_worker_tasks_coroutine_schedule()
 {
-    std::cout << "-- worker tasks coroutine schedule --" << std::endl;
+    std::cout << "-- worker tasks coroutine schedule --" << '\n';
 
     auto context = std::make_shared<my_worker_task_context>();
     auto task = std::make_unique<my_worker_task>(context, "worker_async_coro");
@@ -1978,13 +1975,13 @@ void test_worker_tasks_coroutine_schedule()
               .then(task->as_executor(), [](portable_concurrency::future<int> previous) { return previous.get() + 2; });
 
     const auto result = result_future.get();
-    std::cout << "coroutine result = " << result << std::endl;
-    std::cout << "coroutine jobs executed = " << context->loop_counter.load() << std::endl;
+    std::cout << "coroutine result = " << result << '\n';
+    std::cout << "coroutine jobs executed = " << context->loop_counter.load() << '\n';
 }
 
 void test_worker_tasks_mixed_execution()
 {
-    std::cout << "-- worker tasks mixed execution --" << std::endl;
+    std::cout << "-- worker tasks mixed execution --" << '\n';
 
     auto context = std::make_shared<my_worker_task_context>();
     auto task = std::make_unique<my_worker_task>(context, "worker_mixed");
@@ -1992,14 +1989,14 @@ void test_worker_tasks_mixed_execution()
     task->delegate(
         [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name)
         {
-            std::cout << "delegate on " << task_name << std::endl;
+            std::cout << "delegate on " << task_name << '\n';
             ctx->loop_counter++;
         });
 
     auto async_value = task->delegate_async(
         [](const std::shared_ptr<my_worker_task_context>& ctx, const std::string& task_name, int value)
         {
-            std::cout << "delegate_async on " << task_name << ", value=" << value << std::endl;
+            std::cout << "delegate_async on " << task_name << ", value=" << value << '\n';
             ctx->loop_counter++;
             return value * 5;
         },
@@ -2010,8 +2007,8 @@ void test_worker_tasks_mixed_execution()
               .then(task->as_executor(), [](portable_concurrency::future<int> previous) { return previous.get() + 1; });
 
     const auto mixed_result = mixed_result_future.get();
-    std::cout << "mixed execution result = " << mixed_result << std::endl;
-    std::cout << "mixed execution jobs executed = " << context->loop_counter.load() << std::endl;
+    std::cout << "mixed execution result = " << mixed_result << '\n';
+    std::cout << "mixed execution jobs executed = " << context->loop_counter.load() << '\n';
 }
 #endif
 
