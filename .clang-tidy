@@ -16,9 +16,16 @@ Checks:          "clang-diagnostic-*,\
                   -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
                   -cppcoreguidelines-pro-type-reinterpret-cast,\
                   -cppcoreguidelines-owning-memory,\
+                  -cppcoreguidelines-avoid-magic-numbers,\
+                  -cppcoreguidelines-special-member-functions,\
                   -bugprone-suspicious-include,\
+                  -bugprone-easily-swappable-parameters,\
                   -fuchsia-default-arguments-calls,\
                   -fuchsia-overloaded-operator,\
+                  -fuchsia-trailing-return,\
+                  -modernize-use-designated-initializers,\
+                  -readability-identifier-length,\
+                  -readability-magic-numbers,\
                   -readability-use-concise-preprocessor-directives,\
                   -readability-function-cognitive-complexity"
 WarningsAsErrors: "clang-diagnostic-*"
