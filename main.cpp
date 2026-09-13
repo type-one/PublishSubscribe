@@ -145,7 +145,7 @@ void test_ring_buffer()
     std::cout << "popped with iterator-pair: " << popped_pair_count << '\n';
     for (std::size_t i = 0; i < popped_pair_count; ++i)
     {
-        std::cout << "  " << popped_pair[i] << '\n';
+        std::cout << "  " << popped_pair.at(i) << '\n';
     }
 
     std::cout << "drain iterator-pair batch:" << '\n';
@@ -206,7 +206,7 @@ void test_ring_buffer()
     std::cout << "popped with C++20 span: " << popped_span_count << '\n';
     for (std::size_t i = 0; i < popped_span_count; ++i)
     {
-        std::cout << "  " << popped_span[i] << '\n';
+        std::cout << "  " << popped_span.at(i) << '\n';
     }
 
     std::cout << "drain C++20 container range:" << '\n';
@@ -241,7 +241,7 @@ void test_lock_free_ring_buffer()
     std::cout << "pop_range iterator-pair popped: " << popped_count_first << '\n';
     for (std::size_t i = 0; i < popped_count_first; ++i)
     {
-        std::cout << "  " << popped_first[i] << '\n';
+        std::cout << "  " << popped_first.at(i) << '\n';
     }
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
@@ -257,7 +257,7 @@ void test_lock_free_ring_buffer()
     std::cout << "pop_range C++20 span popped: " << popped_count_second << '\n';
     for (std::size_t i = 0; i < popped_count_second; ++i)
     {
-        std::cout << "  " << popped_second[i] << '\n';
+        std::cout << "  " << popped_second.at(i) << '\n';
     }
 #endif
 
@@ -329,7 +329,7 @@ void test_sync_ring_buffer()
     std::cout << "popped with iterator-pair: " << popped_pair_count << '\n';
     for (std::size_t i = 0; i < popped_pair_count; ++i)
     {
-        std::cout << "  " << popped_pair[i] << '\n';
+        std::cout << "  " << popped_pair.at(i) << '\n';
     }
 
     std::cout << "drain iterator-pair sync batch:" << '\n';
@@ -390,7 +390,7 @@ void test_sync_ring_buffer()
     std::cout << "popped with C++20 span: " << popped_span_count << '\n';
     for (std::size_t i = 0; i < popped_span_count; ++i)
     {
-        std::cout << "  " << popped_span[i] << '\n';
+        std::cout << "  " << popped_span.at(i) << '\n';
     }
 
     std::cout << "drain C++20 container sync range:" << '\n';
@@ -441,7 +441,7 @@ void test_ring_vector()
         std::cout << "popped with iterator-pair: " << popped << '\n';
         for (std::size_t i = 0; i < popped; ++i)
         {
-            std::cout << "  " << output[i] << '\n';
+            std::cout << "  " << output.at(i) << '\n';
         }
     }
 
@@ -498,7 +498,7 @@ void test_ring_vector()
         std::cout << "popped with C++20 span: " << popped << '\n';
         for (std::size_t i = 0; i < popped; ++i)
         {
-            std::cout << "  " << buffer[i] << '\n';
+            std::cout << "  " << buffer.at(i) << '\n';
         }
     }
 
@@ -572,7 +572,7 @@ void test_sync_ring_vector()
         std::cout << "popped with iterator-pair: " << popped << '\n';
         for (std::size_t i = 0; i < popped; ++i)
         {
-            std::cout << "  " << output[i] << '\n';
+            std::cout << "  " << output.at(i) << '\n';
         }
     }
 
@@ -629,7 +629,7 @@ void test_sync_ring_vector()
         std::cout << "popped with C++20 span: " << popped << '\n';
         for (std::size_t i = 0; i < popped; ++i)
         {
-            std::cout << "  " << buffer[i] << '\n';
+            std::cout << "  " << buffer.at(i) << '\n';
         }
     }
 
@@ -682,7 +682,7 @@ void test_sync_queue()
     std::cout << "popped with pop_range (iterator-pair): " << popped_count << '\n';
     for (std::size_t i = 0; i < popped_count; ++i)
     {
-        std::cout << "  popped: " << popped_batch[i] << '\n';
+        std::cout << "  popped: " << popped_batch.at(i) << '\n';
     }
 
     while (!str_queue.empty())
@@ -706,7 +706,7 @@ void test_sync_queue()
     std::cout << "popped with pop_range (C++20 span): " << popped_span_count << '\n';
     for (std::size_t i = 0; i < popped_span_count; ++i)
     {
-        std::cout << "  popped: " << popped_span[i] << '\n';
+        std::cout << "  popped: " << popped_span.at(i) << '\n';
     }
 
     while (!str_queue.empty())
@@ -1642,7 +1642,7 @@ void test_worker_tasks()
     {
         auto idx = distribution(generator);
 
-        tasks[idx]->delegate(
+        tasks.at(idx)->delegate(
             [](const auto& context, const auto& task_name) -> void
             {
                 std::cout << "job " << context->loop_counter.load() << " on worker task " << task_name.c_str()
