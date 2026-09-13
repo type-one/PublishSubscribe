@@ -60,8 +60,9 @@ endif()
 # The ${ANDROID_ABI} variable is the way to go in Android, where it assumes values like arm64-v8a, x86_64 and so on
 
 # specify the C++ standard
-set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD 20)
+#set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
+#set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(CMAKE_C_STANDARD 11)
