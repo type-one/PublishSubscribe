@@ -35,6 +35,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <vector>
 
 #include "tools/sync_object.hpp"
 
@@ -90,25 +91,34 @@ TEST(SyncObjectTest, WaitForSignalWithTimeoutReturnsEarlyWhenSignaled)
     EXPECT_TRUE(signaled.load());
 }
 
-// TODO: unlike a typical multi-waiter broadcast, signal_all() here only reliably
-// releases one auto-reset waiter per call; do not assume it wakes every blocked thread.
-TEST(SyncObjectTest, SignalAllWakesWaiter)
+// signal_all() uses a broadcast epoch counter so it reliably wakes every waiter
+// blocked before the call, unlike signal()'s single-consumer auto-reset flag.
+TEST(SyncObjectTest, SignalAllWakesUpMultipleWaiters)
 {
-    // wait_for_signal auto-resets the flag, so a single signal_all() reliably
-    // releases only one blocked waiter; verify that basic contract here.
     tools::sync_object sync;
-    std::atomic_bool signaled { false };
+    std::atomic<int> woken_count { 0 };
 
-    std::thread waiter(
-        [&sync, &signaled]()
-        {
-            sync.wait_for_signal();
-            signaled.store(true);
-        });
+    static constexpr int waiter_count = 4;
+    std::vector<std::thread> waiters;
+    waiters.reserve(waiter_count);
+
+    for (int i = 0; i < waiter_count; ++i)
+    {
+        waiters.emplace_back(
+            [&sync, &woken_count]()
+            {
+                sync.wait_for_signal();
+                woken_count.fetch_add(1);
+            });
+    }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     sync.signal_all();
-    waiter.join();
 
-    EXPECT_TRUE(signaled.load());
+    for (auto& waiter : waiters)
+    {
+        waiter.join();
+    }
+
+    EXPECT_EQ(woken_count.load(), waiter_count);
 }

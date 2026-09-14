@@ -43,6 +43,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <mutex>
 
 #include "tools/non_copyable.hpp"
@@ -62,6 +63,8 @@ namespace tools
 
     private:
         bool m_signaled = false;
+        // separate from m_signaled so signal_all() isn't consumed by only one waiter
+        std::uint64_t m_broadcast_epoch = 0U;
         std::mutex m_mutex;
         std::condition_variable m_cond;
     };
