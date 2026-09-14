@@ -66,9 +66,8 @@ TEST(PeriodicTaskTest, ContextValueIncreasesOverTime)
 {
     auto context = std::make_shared<counter_context>();
 
-    tools::periodic_task<counter_context> task(
-        [](const std::shared_ptr<counter_context>& ctx, const std::string&) { ctx->increment(); }, context,
-        "periodic-test", std::chrono::milliseconds(20));
+    tools::periodic_task<counter_context> task([](const std::shared_ptr<counter_context>& ctx, const std::string&)
+        { ctx->increment(); }, context, "periodic-test", std::chrono::milliseconds(20));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
@@ -82,8 +81,8 @@ TEST(PeriodicTaskTest, ConstructorSupportsLvalueRvalueAndConversion)
     tools::periodic_task<counter_context>::call_back routine_lvalue
         = [](const std::shared_ptr<counter_context>& ctx, const std::string&) { ctx->increment(); };
 
-    tools::periodic_task<counter_context> task(routine_lvalue, context, std::string("forwarding-test"),
-        std::chrono::milliseconds(20));
+    tools::periodic_task<counter_context> task(
+        routine_lvalue, context, std::string("forwarding-test"), std::chrono::milliseconds(20));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 

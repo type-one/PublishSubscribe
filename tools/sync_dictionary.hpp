@@ -166,10 +166,10 @@ namespace tools
         void add_emplace(std::tuple<KeyArgs...> key_args, std::tuple<ValueArgs...> value_args)
         {
             std::unique_lock guard(m_mutex);
-            auto key = std::apply([](auto&&... args) { return K(std::forward<decltype(args)>(args)...); },
-                std::move(key_args));
-            auto value = std::apply([](auto&&... args) { return T(std::forward<decltype(args)>(args)...); },
-                std::move(value_args));
+            auto key = std::apply(
+                [](auto&&... args) { return K(std::forward<decltype(args)>(args)...); }, std::move(key_args));
+            auto value = std::apply(
+                [](auto&&... args) { return T(std::forward<decltype(args)>(args)...); }, std::move(value_args));
             m_dictionary.insert_or_assign(std::move(key), std::move(value));
         }
 #else
@@ -180,10 +180,10 @@ namespace tools
         void add_emplace(std::tuple<KeyArgs...> key_args, std::tuple<ValueArgs...> value_args)
         {
             std::unique_lock guard(m_mutex);
-            auto key = std::apply([](auto&&... args) { return K(std::forward<decltype(args)>(args)...); },
-                std::move(key_args));
-            auto value = std::apply([](auto&&... args) { return T(std::forward<decltype(args)>(args)...); },
-                std::move(value_args));
+            auto key = std::apply(
+                [](auto&&... args) { return K(std::forward<decltype(args)>(args)...); }, std::move(key_args));
+            auto value = std::apply(
+                [](auto&&... args) { return T(std::forward<decltype(args)>(args)...); }, std::move(value_args));
             m_dictionary.insert_or_assign(std::move(key), std::move(value));
         }
 #endif
