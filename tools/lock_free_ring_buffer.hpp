@@ -90,6 +90,9 @@ namespace tools
          * the function returns false. This implementation is lock-free for the supported
          * single-producer/single-consumer usage model.
          *
+         * One slot is always kept empty (sentinel slot) to distinguish the full state from the
+         * empty state without an explicit size counter, so only capacity() - 1 elements are usable.
+         *
          * @param elem The element to be pushed into the ring buffer.
          * @return true if the element was successfully pushed into the buffer, false if the buffer is full.
          */
@@ -98,7 +101,7 @@ namespace tools
             const std::size_t write_idx = m_push_index.load(std::memory_order_relaxed);
             const std::size_t read_idx = m_pop_index.load(std::memory_order_acquire);
 
-            if ((write_idx - read_idx) >= ring_buffer_size)
+            if ((write_idx - read_idx) >= (ring_buffer_size - 1U))
             {
                 return false;
             }
@@ -217,6 +220,9 @@ namespace tools
          * This function calculates the capacity of the ring buffer based on the
          * template parameter Pow2. The capacity is determined as 2 raised to the
          * power of Pow2.
+         *
+         * One slot is reserved as a sentinel to disambiguate full from empty, so only
+         * capacity() - 1 elements can be stored at once.
          *
          * @return The capacity of the ring buffer.
          */

@@ -68,20 +68,18 @@ TYPED_TEST(LockFreeRingBufferTest, CapacityTest)
     ASSERT_EQ(this->buffer->capacity(), 16U);
 }
 
-// TODO: PublishSubscribeESP32's lock_free_ring_buffer wastes one slot to distinguish
-// full/empty, so only capacity()-1 slots are usable there; this repo's version tracks
-// size explicitly and all capacity() slots are usable.
+// one slot is always reserved as a sentinel to disambiguate full from empty,
+// matching PublishSubscribeESP32's lock_free_ring_buffer: only capacity()-1 slots are usable
 TYPED_TEST(LockFreeRingBufferTest, PushPopTest)
 {
-    // capacity is a full power-of-two (no sentinel slot wasted), so all 16 slots are usable
     TypeParam value;
-    for (int i = 1; i <= 16; ++i)
+    for (int i = 1; i <= 15; ++i)
     {
         ASSERT_TRUE(this->buffer->push(static_cast<TypeParam>(i)));
     }
-    ASSERT_FALSE(this->buffer->push(static_cast<TypeParam>(17))); // buffer should be full
+    ASSERT_FALSE(this->buffer->push(static_cast<TypeParam>(16))); // buffer should be full
 
-    for (int i = 1; i <= 16; ++i)
+    for (int i = 1; i <= 15; ++i)
     {
         ASSERT_TRUE(this->buffer->pop(value));
         ASSERT_EQ(value, static_cast<TypeParam>(i));
@@ -106,7 +104,7 @@ TYPED_TEST(LockFreeRingBufferTest, PushPopInterleavedTest)
 
 TYPED_TEST(LockFreeRingBufferTest, OverflowTest)
 {
-    for (int i = 0; i < 16; ++i)
+    for (int i = 0; i < 15; ++i)
     {
         ASSERT_TRUE(this->buffer->push(static_cast<TypeParam>(i)));
     }
