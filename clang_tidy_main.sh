@@ -16,7 +16,9 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$script_dir"
-main_dir="$repo_root/"
+# no trailing slash: find's -path prune patterns below build on this and must
+# exactly match the (single-slash) paths find constructs while traversing
+main_dir="$repo_root"
 vendor_dir="$repo_root/portable_concurrency"
 
 if [[ ! -f "$repo_root/.clang-tidy" ]]; then

@@ -1473,6 +1473,12 @@ using my_periodic_task = tools::periodic_task<my_periodic_task_context>;
 void test_periodic_task()
 {
     std::cout << "-- periodic task --" << '\n';
+    auto startup = [](const std::shared_ptr<my_periodic_task_context>& context, const std::string& task_name) -> void
+    {
+        (void)task_name;
+        context->loop_counter = 0;
+    };
+
     auto lambda = [](const std::shared_ptr<my_periodic_task_context>& context, const std::string& task_name) -> void
     {
         (void)task_name;
@@ -1484,7 +1490,7 @@ void test_periodic_task()
     // 20 ms period
     static constexpr auto period = std::chrono::duration<int, std::micro>(20000);
     const auto start_timepoint = std::chrono::high_resolution_clock::now();
-    my_periodic_task task1(lambda, context, "periodic task 1", period);
+    my_periodic_task task1(startup, lambda, context, "periodic task 1", period);
 
     // sleep 2 sec
     std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
@@ -1564,6 +1570,12 @@ void test_periodic_publish_subscribe()
         data_source->publish(my_topic::external, std::to_string(signal));
     };
 
+    auto startup = [](const std::shared_ptr<my_periodic_task_context>& context, const std::string& task_name) -> void
+    {
+        (void)task_name;
+        context->loop_counter = 0;
+    };
+
     data_source->subscribe(my_topic::external, monitoring);
     data_source->subscribe(my_topic::external, histogram_feeder);
 
@@ -1571,7 +1583,7 @@ void test_periodic_publish_subscribe()
     auto context = std::make_shared<my_periodic_task_context>();
     const auto period = std::chrono::duration<int, std::milli>(100);
     {
-        my_periodic_task periodic_task(sampler, context, "periodic task 1", period);
+        my_periodic_task periodic_task(startup, sampler, context, "periodic task 1", period);
 
         std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2000));
     }

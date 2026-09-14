@@ -70,17 +70,19 @@ namespace tools
 
         using call_back = std::function<void(std::shared_ptr<Context>, const std::string& task_name)>;
 
-        // Forward routine/context/name at construction to minimize extra copies.
+        // Forward startup/routine/context/name at construction to minimize extra copies.
 
 #if (__cplusplus >= 202002L) || (defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L))
-        // C++20: perfect-forward callback/context/name into stored members.
-        template <typename RoutineArg, typename ContextArg, typename NameArg>
-            requires std::is_constructible_v<call_back, RoutineArg&&>
+        // C++20: perfect-forward callbacks/context/name into stored members.
+        template <typename StartupArg, typename RoutineArg, typename ContextArg, typename NameArg>
+            requires std::is_constructible_v<call_back, StartupArg&&>
+                         && std::is_constructible_v<call_back, RoutineArg&&>
                          && std::is_constructible_v<std::shared_ptr<Context>, ContextArg&&>
                          && std::is_constructible_v<std::string, NameArg&&>
-        periodic_task(RoutineArg&& routine, ContextArg&& context, NameArg&& task_name,
+        periodic_task(StartupArg&& startup_routine, RoutineArg&& routine, ContextArg&& context, NameArg&& task_name,
             const std::chrono::duration<int, std::micro>& period)
-            : m_routine { std::forward<RoutineArg>(routine) }
+            : m_startup_routine { std::forward<StartupArg>(startup_routine) }
+            , m_routine { std::forward<RoutineArg>(routine) }
             , m_context { std::forward<ContextArg>(context) }
             , m_task_name { std::forward<NameArg>(task_name) }
             , m_period { period }
@@ -89,13 +91,15 @@ namespace tools
         }
 #else
         // C++17: equivalent forwarding constructor constrained via SFINAE.
-        template <typename RoutineArg, typename ContextArg, typename NameArg,
-            typename = std::enable_if_t<std::is_constructible_v<call_back, RoutineArg&&>
+        template <typename StartupArg, typename RoutineArg, typename ContextArg, typename NameArg,
+            typename = std::enable_if_t<std::is_constructible_v<call_back, StartupArg&&>
+                && std::is_constructible_v<call_back, RoutineArg&&>
                 && std::is_constructible_v<std::shared_ptr<Context>, ContextArg&&>
                 && std::is_constructible_v<std::string, NameArg&&>>>
-        periodic_task(RoutineArg&& routine, ContextArg&& context, NameArg&& task_name,
+        periodic_task(StartupArg&& startup_routine, RoutineArg&& routine, ContextArg&& context, NameArg&& task_name,
             const std::chrono::duration<int, std::micro>& period)
-            : m_routine { std::forward<RoutineArg>(routine) }
+            : m_startup_routine { std::forward<StartupArg>(startup_routine) }
+            , m_routine { std::forward<RoutineArg>(routine) }
             , m_context { std::forward<ContextArg>(context) }
             , m_task_name { std::forward<NameArg>(task_name) }
             , m_period { period }
@@ -113,6 +117,9 @@ namespace tools
     private:
         void periodic_call()
         {
+            // run-once startup routine before entering the periodic loop
+            m_startup_routine(m_context, m_task_name);
+
             const auto start_time = std::chrono::high_resolution_clock::now();
             auto deadline = start_time + m_period;
 
@@ -152,6 +159,7 @@ namespace tools
             } // periodic task loop
         }
 
+        call_back m_startup_routine;
         call_back m_routine;
         std::shared_ptr<Context> m_context;
         std::string m_task_name;

@@ -38,8 +38,6 @@
 #include <string>
 #include <thread>
 
-// TODO: PublishSubscribeESP32's periodic_task takes a separate startup routine and a
-// stack_size argument; this repo's periodic_task only takes a single periodic routine.
 #include "tools/periodic_task.hpp"
 
 namespace
@@ -66,11 +64,32 @@ TEST(PeriodicTaskTest, ContextValueIncreasesOverTime)
 {
     auto context = std::make_shared<counter_context>();
 
-    tools::periodic_task<counter_context> task([](const std::shared_ptr<counter_context>& ctx, const std::string&)
-        { ctx->increment(); }, context, "periodic-test", std::chrono::milliseconds(20));
+    auto startup = [](const std::shared_ptr<counter_context>&, const std::string&) { };
+
+    tools::periodic_task<counter_context> task(
+        startup, [](const std::shared_ptr<counter_context>& ctx, const std::string&) { ctx->increment(); }, context,
+        "periodic-test", std::chrono::milliseconds(20));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
+    EXPECT_GT(context->value(), 1);
+}
+
+TEST(PeriodicTaskTest, StartupRoutineRunsOnceBeforeFirstPeriod)
+{
+    auto context = std::make_shared<counter_context>();
+    std::atomic<int> startup_calls { 0 };
+
+    auto startup
+        = [&startup_calls](const std::shared_ptr<counter_context>&, const std::string&) { startup_calls.fetch_add(1); };
+
+    tools::periodic_task<counter_context> task(
+        startup, [](const std::shared_ptr<counter_context>& ctx, const std::string&) { ctx->increment(); }, context,
+        "periodic-startup-test", std::chrono::milliseconds(20));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    EXPECT_EQ(startup_calls.load(), 1);
     EXPECT_GT(context->value(), 1);
 }
 
@@ -78,11 +97,13 @@ TEST(PeriodicTaskTest, ConstructorSupportsLvalueRvalueAndConversion)
 {
     auto context = std::make_shared<counter_context>();
 
+    tools::periodic_task<counter_context>::call_back startup_lvalue
+        = [](const std::shared_ptr<counter_context>&, const std::string&) { };
     tools::periodic_task<counter_context>::call_back routine_lvalue
         = [](const std::shared_ptr<counter_context>& ctx, const std::string&) { ctx->increment(); };
 
     tools::periodic_task<counter_context> task(
-        routine_lvalue, context, std::string("forwarding-test"), std::chrono::milliseconds(20));
+        startup_lvalue, routine_lvalue, context, std::string("forwarding-test"), std::chrono::milliseconds(20));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
