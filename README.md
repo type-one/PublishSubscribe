@@ -17,6 +17,7 @@ Goodies:
 - expected/unexpected compatibility layer (std::expected alias on C++23 when available)
 - simple periodic task helper
 - simple worker task helper with async processing support (& cpp20 coroutines)
+- simple bounded data processing task helper
 - simple thread-safe ring buffer on top of std::array
 - simple thread-safe and resizeable ring vector on top of std::vector
 - chronological time_list and thread-safe sync_time_list helpers
