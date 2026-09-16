@@ -1,6 +1,6 @@
 /**
- * @file main.cpp
- * @brief Application runner for the PublishSubscribe examples.
+ * @file example_data_task.cpp
+ * @brief Demonstrates bounded asynchronous data processing.
  *
  * @author Laurent Lardinois
  * @date September 2026
@@ -31,33 +31,52 @@
 // 3. This notice may not be removed or altered from any source distribution.  //
 //-----------------------------------------------------------------------------//
 
+#include <atomic>
+#include <chrono>
 #include <iostream>
+#include <memory>
+#include <string>
+#include <thread>
 
-#include "examples/examples.hpp"
+#include "examples.hpp"
+#include "tools/data_task.hpp"
 
-#if defined(USE_MEM_POOL_ALLOCATOR)
-extern void init_mem_pool_allocator();
-extern void destroy_mem_pool_allocator();
-#endif
-
-int main()
+namespace
 {
-#if defined(USE_MEM_POOL_ALLOCATOR)
-    init_mem_pool_allocator();
-#endif
+    struct data_task_context
+    {
+        std::atomic_int processed_count = 0;
+    };
+}
 
-    run_example_ring_container();
-    run_example_sync_container();
-    run_example_time_list();
-    run_example_pub_sub_and_task();
-    run_example_worker_and_command();
-    run_example_data_task();
-    run_example_allocator_stress();
+void run_example_data_task()
+{
+    std::cout << "-- data task --" << '\n';
 
-#if defined(USE_MEM_POOL_ALLOCATOR)
-    destroy_mem_pool_allocator();
-#endif
+    auto context = std::make_shared<data_task_context>();
+    tools::data_task<data_task_context, int> task(
+        [](const std::shared_ptr<data_task_context>&, const std::string& task_name)
+        { std::cout << "starting " << task_name << '\n'; },
+        [](const std::shared_ptr<data_task_context>& task_context, const int& data, const std::string& task_name)
+        {
+            std::cout << task_name << " processed " << data << '\n';
+            task_context->processed_count.fetch_add(1);
+        },
+        context, 4U, "data-task-example");
 
-    std::cout << "This is The END" << std::endl;
-    return 0;
+    for (const auto data : { 10, 20, 30 })
+    {
+        if (!task.submit(data))
+        {
+            std::cout << "data queue is full; dropped " << data << '\n';
+        }
+    }
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+    while (context->processed_count.load() != 3 && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::yield();
+    }
+
+    std::cout << "processed entries: " << context->processed_count.load() << '\n';
 }

@@ -1,6 +1,6 @@
 /**
- * @file main.cpp
- * @brief Application runner for the PublishSubscribe examples.
+ * @file examples.hpp
+ * @brief Declares the example entry points executed by the application runner.
  *
  * @author Laurent Lardinois
  * @date September 2026
@@ -31,33 +31,12 @@
 // 3. This notice may not be removed or altered from any source distribution.  //
 //-----------------------------------------------------------------------------//
 
-#include <iostream>
+#pragma once
 
-#include "examples/examples.hpp"
-
-#if defined(USE_MEM_POOL_ALLOCATOR)
-extern void init_mem_pool_allocator();
-extern void destroy_mem_pool_allocator();
-#endif
-
-int main()
-{
-#if defined(USE_MEM_POOL_ALLOCATOR)
-    init_mem_pool_allocator();
-#endif
-
-    run_example_ring_container();
-    run_example_sync_container();
-    run_example_time_list();
-    run_example_pub_sub_and_task();
-    run_example_worker_and_command();
-    run_example_data_task();
-    run_example_allocator_stress();
-
-#if defined(USE_MEM_POOL_ALLOCATOR)
-    destroy_mem_pool_allocator();
-#endif
-
-    std::cout << "This is The END" << std::endl;
-    return 0;
-}
+void run_example_ring_container();
+void run_example_sync_container();
+void run_example_time_list();
+void run_example_pub_sub_and_task();
+void run_example_worker_and_command();
+void run_example_data_task();
+void run_example_allocator_stress();

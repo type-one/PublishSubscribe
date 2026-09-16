@@ -40,6 +40,8 @@ AI/Agent guidance files:
 
 Small test program written in C++17 / C++20 / C++23 to implement a simple Publish/Subscribe pattern. The code is portable and lightweight.
 
+Runnable demonstrations are organized under `examples/`. `main.cpp` is the small runner; each `run_example_*` entry point is declared in `examples/examples.hpp`.
+
 It compiles with C++17, C++20 and C++23 (with extra features enabled when available, such as std::ranges and std::expected compatibility).
 
 ## Why

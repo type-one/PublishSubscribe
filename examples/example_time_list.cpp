@@ -1,6 +1,6 @@
 /**
- * @file main.cpp
- * @brief Application runner for the PublishSubscribe examples.
+ * @file example_time_list.cpp
+ * @brief Runs chronological container and histogram examples.
  *
  * @author Laurent Lardinois
  * @date September 2026
@@ -31,33 +31,19 @@
 // 3. This notice may not be removed or altered from any source distribution.  //
 //-----------------------------------------------------------------------------//
 
-#include <iostream>
+#include "examples.hpp"
 
-#include "examples/examples.hpp"
+void test_time_list();
+void test_time_list_unit_style();
+void test_sync_time_list();
+void test_sync_time_list_unit_style();
+void test_histogram();
 
-#if defined(USE_MEM_POOL_ALLOCATOR)
-extern void init_mem_pool_allocator();
-extern void destroy_mem_pool_allocator();
-#endif
-
-int main()
+void run_example_time_list()
 {
-#if defined(USE_MEM_POOL_ALLOCATOR)
-    init_mem_pool_allocator();
-#endif
-
-    run_example_ring_container();
-    run_example_sync_container();
-    run_example_time_list();
-    run_example_pub_sub_and_task();
-    run_example_worker_and_command();
-    run_example_data_task();
-    run_example_allocator_stress();
-
-#if defined(USE_MEM_POOL_ALLOCATOR)
-    destroy_mem_pool_allocator();
-#endif
-
-    std::cout << "This is The END" << std::endl;
-    return 0;
+    test_time_list();
+    test_time_list_unit_style();
+    test_sync_time_list();
+    test_sync_time_list_unit_style();
+    test_histogram();
 }

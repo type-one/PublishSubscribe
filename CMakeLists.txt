@@ -152,6 +152,14 @@ target_include_directories(framework_modules PUBLIC "${PROJECT_SOURCE_DIR}")
 
 add_executable(publish_subscribe
     main.cpp
+    examples/example_legacy.cpp
+    examples/example_ring_container.cpp
+    examples/example_sync_container.cpp
+    examples/example_time_list.cpp
+    examples/example_pub_sub_and_task.cpp
+    examples/example_worker_and_command.cpp
+    examples/example_data_task.cpp
+    examples/example_allocator_stress.cpp
 )
 target_link_libraries(publish_subscribe PRIVATE framework_modules)
 

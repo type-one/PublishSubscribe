@@ -1,6 +1,6 @@
 /**
- * @file main.cpp
- * @brief Application runner for the PublishSubscribe examples.
+ * @file example_worker_and_command.cpp
+ * @brief Runs queued command and worker task examples.
  *
  * @author Laurent Lardinois
  * @date September 2026
@@ -31,33 +31,29 @@
 // 3. This notice may not be removed or altered from any source distribution.  //
 //-----------------------------------------------------------------------------//
 
-#include <iostream>
+#include "examples.hpp"
 
-#include "examples/examples.hpp"
-
-#if defined(USE_MEM_POOL_ALLOCATOR)
-extern void init_mem_pool_allocator();
-extern void destroy_mem_pool_allocator();
+void test_queued_commands();
+void test_ring_buffer_commands();
+void test_worker_tasks();
+void test_worker_tasks_async();
+void test_worker_tasks_async_fanout();
+void test_portable_concurrency_test_parity();
+#if defined(PC_HAS_COROUTINES)
+void test_worker_tasks_coroutine_schedule();
+void test_worker_tasks_mixed_execution();
 #endif
 
-int main()
+void run_example_worker_and_command()
 {
-#if defined(USE_MEM_POOL_ALLOCATOR)
-    init_mem_pool_allocator();
+    test_queued_commands();
+    test_ring_buffer_commands();
+    test_worker_tasks();
+    test_worker_tasks_async();
+    test_worker_tasks_async_fanout();
+    test_portable_concurrency_test_parity();
+#if defined(PC_HAS_COROUTINES)
+    test_worker_tasks_coroutine_schedule();
+    test_worker_tasks_mixed_execution();
 #endif
-
-    run_example_ring_container();
-    run_example_sync_container();
-    run_example_time_list();
-    run_example_pub_sub_and_task();
-    run_example_worker_and_command();
-    run_example_data_task();
-    run_example_allocator_stress();
-
-#if defined(USE_MEM_POOL_ALLOCATOR)
-    destroy_mem_pool_allocator();
-#endif
-
-    std::cout << "This is The END" << std::endl;
-    return 0;
 }
