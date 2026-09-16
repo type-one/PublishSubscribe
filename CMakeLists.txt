@@ -152,7 +152,6 @@ target_include_directories(framework_modules PUBLIC "${PROJECT_SOURCE_DIR}")
 
 add_executable(publish_subscribe
     main.cpp
-    examples/example_legacy.cpp
     examples/example_ring_container.cpp
     examples/example_sync_container.cpp
     examples/example_time_list.cpp

@@ -36,7 +36,7 @@
 #include "examples/examples.hpp"
 
 #if defined(USE_MEM_POOL_ALLOCATOR)
-extern void init_mem_pool_allocator();
+    extern void init_mem_pool_allocator();
 extern void destroy_mem_pool_allocator();
 #endif
 
