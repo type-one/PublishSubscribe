@@ -405,7 +405,7 @@ namespace tools
         void resize(std::size_t new_size)
         {
             std::unique_lock guard(m_mutex);
-            if (new_size != m_ring_vector.size())
+            if (new_size != m_ring_vector.capacity())
             {
                 m_ring_vector.resize(new_size);
             }

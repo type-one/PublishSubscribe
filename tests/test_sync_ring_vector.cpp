@@ -34,6 +34,7 @@
 
 #include <array>
 #include <atomic>
+#include <cstddef>
 #include <thread>
 #include <vector>
 
@@ -115,4 +116,46 @@ TEST(SyncRingVectorTest, ConcurrentPushAndPop)
 
     EXPECT_EQ(produced.load(), 1000);
     EXPECT_EQ(consumed.load(), 1000);
+}
+
+TEST(SyncRingVectorTest, ResizeToOccupancyPreservesRecord)
+{
+    constexpr std::size_t initial_capacity = 1024U;
+    constexpr std::size_t target_capacity = 1U;
+    tools::sync_ring_vector<int> buffer(initial_capacity);
+    ASSERT_TRUE(buffer.push(42));
+
+    buffer.resize(target_capacity);
+
+    EXPECT_EQ(buffer.capacity(), target_capacity);
+    ASSERT_EQ(buffer.size(), target_capacity);
+    EXPECT_TRUE(buffer.full());
+    EXPECT_FALSE(buffer.push(99));
+    std::vector<int> destination(target_capacity);
+    ASSERT_EQ(buffer.pop_range(destination.begin(), destination.end()), target_capacity);
+    EXPECT_EQ(destination.front(), 42);
+    EXPECT_TRUE(buffer.empty());
+    EXPECT_TRUE(buffer.push(99));
+}
+
+TEST(SyncRingVectorTest, ResizeEmptyRingToZeroAndRegrow)
+{
+    constexpr std::size_t initial_capacity = 1024U;
+    tools::sync_ring_vector<int> buffer(initial_capacity);
+
+    buffer.resize(0U);
+
+    EXPECT_EQ(buffer.capacity(), 0U);
+    EXPECT_TRUE(buffer.empty());
+    EXPECT_TRUE(buffer.full());
+    EXPECT_FALSE(buffer.push(42));
+
+    buffer.resize(initial_capacity);
+
+    EXPECT_EQ(buffer.capacity(), initial_capacity);
+    EXPECT_TRUE(buffer.empty());
+    ASSERT_TRUE(buffer.push(99));
+    std::vector<int> destination(1U);
+    ASSERT_EQ(buffer.pop_range(destination.begin(), destination.end()), 1U);
+    EXPECT_EQ(destination.front(), 99);
 }
